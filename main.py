@@ -4,7 +4,9 @@ from cordFrames import cordFrame, worldFrame, transform
 from scipy.spatial.transform import Rotation as R # quaternion in scalar-last
 from skimage.draw import circle_perimeter
 from draw_curve import draw_curve
+from radius import turn
 import cv2 as cv
+from CMadgwick_wenigSelf import CMad
 
 
 def main():
@@ -67,21 +69,47 @@ def main():
     # print(imu_frame)
     # print(cam_frame)
 
+    csv_path = '../100GOPRO/kandidaten/csv/'
+    video_path = '../100GOPRO/kandidaten/'
+    file = '3_2'
+    test = turn()
+    cmad = CMad()
+
+    radius_madgwick = pd.read_csv(csv_path + file + '-gyroAcclGpsMadgwick.csv')[['Milliseconds','Radius']].to_numpy()[3:]
+    # print(radius_madgwick)
+    # print(video_path+'.mp4')
+    cap = cv.VideoCapture(video_path + file + '.mp4')
+    # print(cap.isOpened())
+    current = 0
+    while(cap.isOpened()):
+        # Capture frame-by-frame
+        ret, frame = cap.read()
+        # nearest_rad = find_nearest(radius_madgwick[0], cap.get(0))
+        # print(cap.get(0))
+        # print(nearest_rad)
+        radius = radius_madgwick[1, current]
+        # print(radius)
+        curve_proj = draw_curve(radius, cam_frame)
+
+        for j in curve_proj.astype(np.int32):
+            cv.circle(frame, (j[0], j[1]), 5, (0,255,0))
+
+        # Display the resulting frame
+        cv.imshow('frame', frame)
+        current += 16
+        if cv.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    # When everything done, release the capture
+    cap.release()
+    cv.destroyAllWindows()
 
 
-    img = np.zeros((1080, 1920, 3),np.uint8)
-
-    curve_proj = draw_curve(30, cam_frame)
-
-    for j in curve_proj.astype(np.int32):
-        cv.circle(img, (j[0], j[1]), 5, (0,255,0))
-
-    cv.imwrite('curve.png', img)
-
-
-
-
-    return curve_proj
+def find_nearest(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    # print(idx)
+    return idx
 
 
 

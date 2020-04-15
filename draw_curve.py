@@ -24,10 +24,10 @@ z_near = 50
 
 def draw_curve(radius, cam_frame):
     # get curve radius in m, convert to cm
-    radius = 20
+    # radius = 20
     radius *= 10
     # calculate circle perimeter in 2d, extend to 3d(4d) with y-values=0 (1 for 4th dim)
-    curve2 = np.array(circle_perimeter(np.int(radius), 0, np.abs(radius)))
+    curve2 = np.array(circle_perimeter(np.int(radius), 0, np.abs(np.int(radius))))
     # eliminate coords behind camera
     a = curve2[0].tolist()
     b = curve2[1].tolist()
@@ -36,13 +36,13 @@ def draw_curve(radius, cam_frame):
             del(a[x])
             del(b[x])
 
-    print(a)
-    print(b)
+    # print(a)
+    # print(b)
     curve2 = (np.asarray(a), np.asarray(b))
 
     curve3d = (curve2[0], np.zeros(curve2[0].shape, dtype=np.int64),curve2[1], np.ones(curve2[0].shape, dtype=np.int64))
     curve3d = np.column_stack(curve3d).astype(np.float64)
-    print(curve3d)
+    # print(curve3d)
 
     # camera rotation inverse (from parent(world) to camera), homogeneous
     cam_mat = cam_frame.transToWorld.rotQuat.inv().as_matrix()
@@ -58,7 +58,7 @@ def draw_curve(radius, cam_frame):
 
     # combine trans and rot
     trans_rot = np.dot(homog_rot, homog_pos)
-    print(trans_rot)
+    # print(trans_rot)
     # curve_homog = np.zeros((curve3d.shape[0], curve3d.shape[1]))
     curve_cam = np.zeros_like(curve3d)
     curve_proj = np.column_stack(np.zeros_like(curve2)).astype(np.float64)
@@ -105,13 +105,13 @@ def draw_curve(radius, cam_frame):
         #     # curve_proj[i] = x_film*100, y_film*100
         #     curve_proj[i] = x*100, y*100
 
-    print(np.amin(curve_proj[0, :]))
-    print(np.amax(curve_proj[0, :]))
-    print(np.mean(curve_proj[0, :]))
-
-    print(np.amin(curve_proj[1, :]))
-    print(np.amax(curve_proj[1, :]))
-    print(np.mean(curve_proj[1, :]))
+    # print(np.amin(curve_proj[0, :]))
+    # print(np.amax(curve_proj[0, :]))
+    # print(np.mean(curve_proj[0, :]))
+    #
+    # print(np.amin(curve_proj[1, :]))
+    # print(np.amax(curve_proj[1, :]))
+    # print(np.mean(curve_proj[1, :]))
 
     # print(curve_proj))
     return curve_proj
