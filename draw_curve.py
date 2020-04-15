@@ -4,6 +4,7 @@ from sympy import Point3D, Circle
 from skimage.draw import circle_perimeter, line
 import matplotlib.pyplot as plt
 import cv2 as cv
+from cordFrames import get_cordFrames
 
 # kreis in koordinatensystem. ursprung: schnittpunkt motorrad, ebene (stuetzpunkt)
 # einheit: cm
@@ -33,6 +34,8 @@ def draw_curve(radius, cam_frame):
         # print(radius)
         # calculate circle perimeter in 2d, extend to 3d(4d) with y-values=0 (1 for 4th dim)
         curve2 = np.array(circle_perimeter(np.int(radius), 0, np.abs(np.int(radius))))
+
+        curve2
         # eliminate coords behind camera
         a, b = curve2
         # print(a.shape)
@@ -40,7 +43,7 @@ def draw_curve(radius, cam_frame):
         b2 = []# np.zeros((np.int(a.shape[0]/2)-1))
 
         for x in range(a.shape[0]):
-            if a[x]>0 or b[x]>0:
+            if b[x]>0:
                 a2.append(a[x])
                 b2.append(b[x])
 
@@ -125,4 +128,25 @@ def draw_curve(radius, cam_frame):
     # print(np.mean(curve_proj[1, :]))
 
     # print(curve_proj))
-    return curve_proj
+    return curve_proj, bird_view(curve2)
+
+def bird_view(curve2):
+    my_dpi=96
+    fig = plt.figure(figsize=(320/my_dpi, 240/my_dpi), dpi=my_dpi)
+    sc = fig.add_subplot(111)
+    sc.scatter(curve2[0]/10,curve2[1]/10, marker='x', color='red', label='time in ms')
+    sc.set_xlim(-200, 200)
+    sc.set_ylim(-200, 200)
+    sc.set_title('Birdview of circle in m')
+    sc.invert_xaxis()
+    fig.canvas.draw()
+    data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+    data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    plt.close()
+    return data
+
+
+if __name__ == '__main__':
+    world_frame, plane_frame, cam_frame = get_cordFrames()
+    _, curve2 = draw_curve(-2000, cam_frame)
+    # print(curve2)

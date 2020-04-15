@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from cordFrames import cordFrame, worldFrame, transform
+from cordFrames import cordFrame, worldFrame, transform, get_cordFrames
 from scipy.spatial.transform import Rotation as R # quaternion in scalar-last
 from skimage.draw import circle_perimeter, line
 from draw_curve import draw_curve
@@ -8,74 +8,18 @@ from radius import turn
 import cv2 as cv
 from CMadgwick_wenigSelf import CMad
 
-
 def main():
-    # world coordinate frame, origin at ground level of world-plane, contact point of front-wheel and road
-    # +X: left(!), +Y: Up, +Z TO the front (!) of motorcycle
-    world_frame = worldFrame()
-    # print(worldFrame.name)
-    # plane coordinate frame
-    # same as world
-    plane_frame = cordFrame(data=None,
-                            name='plane',
-                            world_frame=world_frame,
-                            parent=world_frame,
-                            children=[],
-                            transToParent=transform(np.array([0, 0, 0], dtype=np.float64),
-                                          R.from_quat(np.array([0, 0, 0, 1], dtype=np.float64)))
-                            )
 
-    # imu coordinate frame
-    # lies 121,37 cm above origin of world frame
-    # +X: up (away from world origin), +Y: to the left(? TODO!!!) +Z: to the back of motorcycle
-
-    imu_frame = cordFrame(data=None,
-                          name='IMU',
-                          world_frame=world_frame,
-                          parent=world_frame, children=[],
-                          transToParent=transform(np.array([0, -121.37, 0], dtype=np.float64),
-                                                  R.from_quat(np.array([[0, 0, np.sin(-np.pi/4),np.cos(-np.pi/4)],
-                                                              [np.sin(np.pi/2), 0, 0, np.cos(np.pi/2)]
-                                                             ], dtype=np.float64))
-                                                 )
-                        )
-
-    # blau rot vertauscht
-    # camera coordinate frame
-    # position same as IMU
-    # orientation as a camera: +X: right (width), +Y: down (to worldframe, height), +Z in driving direction
-
-    cam_frame = cordFrame(data=None,
-                          name='Camera',
-                          world_frame=world_frame,
-                          parent=world_frame,
-                          children=[],
-                          transToParent=transform(np.array([0, -121.37, 0], dtype=np.float64),
-                          R.from_quat(np.array([0, np.sin(np.pi/2), 0, np.cos(np.pi/2)], dtype=np.float64)))
-                          )
-
-    # img_frame = cordFrame(data=None,
-    #                         name='Image',
-    #                         world_frame=world_frame,
-    #                         parent=cam_frame,
-    #                         children=[],
-    #                         transToParent=transform(np.array([0, 0, 0], dtype=np.float64),
-    #                         R.from_quat(np.array([0, 0, np.sin(np.pi/2), np.cos(np.pi/2)], dtype=np.float64)))
-    #
-    #                         )
-
-    # print(world_frame)
-    # print(plane_frame)
-    # print(imu_frame)
-    # print(cam_frame)
+    world_frame, plane_frame, cam_frame = get_cordFrames()
 
     csv_path = '../100GOPRO/kandidaten/csv/'
-    video_path = '../100GOPRO/'
-    file = '2'
+    video_path = '../100GOPRO/kandidaten/'
+    file = '3_2'
     test = turn()
     cmad = CMad()
 
-    radius_madgwick = pd.read_csv(csv_path + file + '_complete-gyroAcclGpsMadgwick.csv')[['Milliseconds','Radius']].to_numpy()[2:].swapaxes(1,0)
+
+    radius_madgwick = pd.read_csv(csv_path + file + '-gyroAcclGpsMadgwick.csv')[['Milliseconds','Radius']].to_numpy()[2:].swapaxes(1,0)
     # print(radius_madgwick)
     # print(video_path+'.mp4')
     radius_madgwick[0] -= radius_madgwick[0,0]
@@ -86,26 +30,33 @@ def main():
     while(cap.isOpened()):
         # Capture frame-by-frame
         ret, frame = cap.read()
+
         # print(ret)
         if ret:
+            height,width = frame.shape[:2]
             nearest_rad = find_nearest(radius_madgwick[0], cap.get(0))
             # print(radius_madgwick[0])
             # print(cap.get(0))
             # print(nearest_rad)
             # print(radius_madgwick[0,nearest_rad])
 
-            radius = radius_madgwick[1,nearest_rad]
+            mil, radius = radius_madgwick[:,nearest_rad]
             cv.putText(frame, 'Frame Nr: %s'%(cap.get(0)), (1650,20), font, 0.5, (0, 255, 0), 2, cv.LINE_AA)
             cv.putText(frame, 'Radius: %s'%(radius), (1650,40), font, 0.5, (0, 255, 0), 2, cv.LINE_AA)
-            cv.putText(frame, 'MIlliseconds(IMU): %s'%(radius_madgwick[0,nearest_rad]), (1650,60), font, 0.5, (0, 255, 0), 2, cv.LINE_AA)
+            cv.putText(frame, 'MIlliseconds(IMU): %s'%(mil), (1650,60), font, 0.5, (0, 255, 0), 2, cv.LINE_AA)
             # print(radius)
-            curve_proj = draw_curve(radius, cam_frame)
+            curve_proj, bird_view = draw_curve(radius, cam_frame)
 
             for j in curve_proj.astype(np.int32):
                 cv.circle(frame, (j[0], j[1]), 5, (0,255,0))
 
             # Display the resulting frame
             # print(frame.shape)
+            # print(bird_view.shape)
+            x_offset = width - bird_view.shape[1]
+            y_offset = np.int(height/3) - bird_view.shape[0]
+            frame[y_offset:y_offset+bird_view.shape[0], x_offset:x_offset+bird_view.shape[1]] = bird_view
+
 
             cv.imshow('frame', frame)
             # cv.imwrite('frameNr_' + str(cap.get(0)) + '.png', frame)
