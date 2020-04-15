@@ -25,24 +25,28 @@ z_near = 50
 def draw_curve(radius, cam_frame):
     # get curve radius in m, convert to cm
     # radius = 20
-    radius *= 10
-    print(radius)
-    # calculate circle perimeter in 2d, extend to 3d(4d) with y-values=0 (1 for 4th dim)
-    curve2 = np.array(circle_perimeter(np.int(radius), 0, np.abs(np.int(radius))))
-    # eliminate coords behind camera
-    a, b = curve2
-    # print(a.shape)
-    a2 = []# np.zeros((np.int(a.shape[0]/2)-1))
-    b2 = []# np.zeros((np.int(a.shape[0]/2)-1))
+    if np.abs(radius) > 300:
+        curve2 = line(0,1,0,3000)
+        # print('line')
+    else:
+        radius *= 10
+        # print(radius)
+        # calculate circle perimeter in 2d, extend to 3d(4d) with y-values=0 (1 for 4th dim)
+        curve2 = np.array(circle_perimeter(np.int(radius), 0, np.abs(np.int(radius))))
+        # eliminate coords behind camera
+        a, b = curve2
+        # print(a.shape)
+        a2 = []# np.zeros((np.int(a.shape[0]/2)-1))
+        b2 = []# np.zeros((np.int(a.shape[0]/2)-1))
 
-    for x in range(a.shape[0]):
-        if a[x]>0 or b[x]>0:
-            a2.append(a[x])
-            b2.append(b[x])
+        for x in range(a.shape[0]):
+            if a[x]>0 or b[x]>0:
+                a2.append(a[x])
+                b2.append(b[x])
 
-    # print(a)
-    # print(b)
-    curve2 = (np.asarray(a2), np.asarray(b2))
+        # print(a)
+        # print(b)
+        curve2 = (np.asarray(a2), np.asarray(b2))
 
     curve3d = (curve2[0], np.zeros(curve2[0].shape, dtype=np.int64),curve2[1], np.ones(curve2[0].shape, dtype=np.int64))
     curve3d = np.column_stack(curve3d).astype(np.float64)

@@ -34,7 +34,7 @@ def main():
                           world_frame=world_frame,
                           parent=world_frame, children=[],
                           transToParent=transform(np.array([0, -121.37, 0], dtype=np.float64),
-                                                  R.from_quat(np.array([[0, 0, np.sin(np.pi/4),np.cos(np.pi/4)],
+                                                  R.from_quat(np.array([[0, 0, np.sin(-np.pi/4),np.cos(-np.pi/4)],
                                                               [np.sin(np.pi/2), 0, 0, np.cos(np.pi/2)]
                                                              ], dtype=np.float64))
                                                  )
@@ -70,36 +70,48 @@ def main():
     # print(cam_frame)
 
     csv_path = '../100GOPRO/kandidaten/csv/'
-    video_path = '../100GOPRO/kandidaten/'
-    file = '3_2'
+    video_path = '../100GOPRO/'
+    file = '2'
     test = turn()
     cmad = CMad()
 
-    radius_madgwick = pd.read_csv(csv_path + file + '-gyroAcclGpsMadgwick.csv')[['Milliseconds','Radius']].to_numpy()[2:].swapaxes(1,0)
+    radius_madgwick = pd.read_csv(csv_path + file + '_complete-gyroAcclGpsMadgwick.csv')[['Milliseconds','Radius']].to_numpy()[2:].swapaxes(1,0)
     # print(radius_madgwick)
     # print(video_path+'.mp4')
     radius_madgwick[0] -= radius_madgwick[0,0]
     cap = cv.VideoCapture(video_path + file + '.mp4')
     # print(cap.isOpened())
     current = 0
+    font = cv.FONT_HERSHEY_SIMPLEX
     while(cap.isOpened()):
         # Capture frame-by-frame
         ret, frame = cap.read()
-        nearest_rad = find_nearest(radius_madgwick[0], cap.get(0))
-        # print(radius_madgwick[0])
-        # print(cap.get(0))
-        # print(nearest_rad)
-        # print(radius_madgwick[0,nearest_rad])
-        radius = radius_madgwick[1,nearest_rad]
-        # print(radius)
-        curve_proj = draw_curve(radius, cam_frame)
+        # print(ret)
+        if ret:
+            nearest_rad = find_nearest(radius_madgwick[0], cap.get(0))
+            # print(radius_madgwick[0])
+            # print(cap.get(0))
+            # print(nearest_rad)
+            # print(radius_madgwick[0,nearest_rad])
 
-        for j in curve_proj.astype(np.int32):
-            cv.circle(frame, (j[0], j[1]), 5, (0,255,0))
+            radius = radius_madgwick[1,nearest_rad]
+            cv.putText(frame, 'Frame Nr: %s'%(cap.get(0)), (1650,20), font, 0.5, (0, 255, 0), 2, cv.LINE_AA)
+            cv.putText(frame, 'Radius: %s'%(radius), (1650,40), font, 0.5, (0, 255, 0), 2, cv.LINE_AA)
+            cv.putText(frame, 'MIlliseconds(IMU): %s'%(radius_madgwick[0,nearest_rad]), (1650,60), font, 0.5, (0, 255, 0), 2, cv.LINE_AA)
+            # print(radius)
+            curve_proj = draw_curve(radius, cam_frame)
 
-        # Display the resulting frame
-        cv.imshow('frame', frame)
-        # current += 4
+            for j in curve_proj.astype(np.int32):
+                cv.circle(frame, (j[0], j[1]), 5, (0,255,0))
+
+            # Display the resulting frame
+            # print(frame.shape)
+
+            cv.imshow('frame', frame)
+            # cv.imwrite('frameNr_' + str(cap.get(0)) + '.png', frame)
+            # current += 4
+            # print(radius)
+            # cv.waitKey(0)
         if cv.waitKey(1) & 0xFF == ord('q'):
             break
 
