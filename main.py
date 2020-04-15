@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from cordFrames import cordFrame, worldFrame, transform
 from scipy.spatial.transform import Rotation as R # quaternion in scalar-last
-from skimage.draw import circle_perimeter
+from skimage.draw import circle_perimeter, line
 from draw_curve import draw_curve
 from radius import turn
 import cv2 as cv
@@ -75,19 +75,22 @@ def main():
     test = turn()
     cmad = CMad()
 
-    radius_madgwick = pd.read_csv(csv_path + file + '-gyroAcclGpsMadgwick.csv')[['Milliseconds','Radius']].to_numpy()[3:]
+    radius_madgwick = pd.read_csv(csv_path + file + '-gyroAcclGpsMadgwick.csv')[['Milliseconds','Radius']].to_numpy()[2:].swapaxes(1,0)
     # print(radius_madgwick)
     # print(video_path+'.mp4')
+    radius_madgwick[0] -= radius_madgwick[0,0]
     cap = cv.VideoCapture(video_path + file + '.mp4')
     # print(cap.isOpened())
     current = 0
     while(cap.isOpened()):
         # Capture frame-by-frame
         ret, frame = cap.read()
-        # nearest_rad = find_nearest(radius_madgwick[0], cap.get(0))
+        nearest_rad = find_nearest(radius_madgwick[0], cap.get(0))
+        # print(radius_madgwick[0])
         # print(cap.get(0))
         # print(nearest_rad)
-        radius = radius_madgwick[1, current]
+        # print(radius_madgwick[0,nearest_rad])
+        radius = radius_madgwick[1,nearest_rad]
         # print(radius)
         curve_proj = draw_curve(radius, cam_frame)
 
@@ -96,7 +99,7 @@ def main():
 
         # Display the resulting frame
         cv.imshow('frame', frame)
-        current += 16
+        # current += 4
         if cv.waitKey(1) & 0xFF == ord('q'):
             break
 

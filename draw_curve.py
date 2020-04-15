@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from sympy import Point3D, Circle
-from skimage.draw import circle_perimeter
+from skimage.draw import circle_perimeter, line
 import matplotlib.pyplot as plt
 import cv2 as cv
 
@@ -26,19 +26,23 @@ def draw_curve(radius, cam_frame):
     # get curve radius in m, convert to cm
     # radius = 20
     radius *= 10
+    print(radius)
     # calculate circle perimeter in 2d, extend to 3d(4d) with y-values=0 (1 for 4th dim)
     curve2 = np.array(circle_perimeter(np.int(radius), 0, np.abs(np.int(radius))))
     # eliminate coords behind camera
-    a = curve2[0].tolist()
-    b = curve2[1].tolist()
-    for x in range(len(a)-1, -1, -1):
-        if a[x]<=0 or b[x]<=0:
-            del(a[x])
-            del(b[x])
+    a, b = curve2
+    # print(a.shape)
+    a2 = []# np.zeros((np.int(a.shape[0]/2)-1))
+    b2 = []# np.zeros((np.int(a.shape[0]/2)-1))
+
+    for x in range(a.shape[0]):
+        if a[x]>0 or b[x]>0:
+            a2.append(a[x])
+            b2.append(b[x])
 
     # print(a)
     # print(b)
-    curve2 = (np.asarray(a), np.asarray(b))
+    curve2 = (np.asarray(a2), np.asarray(b2))
 
     curve3d = (curve2[0], np.zeros(curve2[0].shape, dtype=np.int64),curve2[1], np.ones(curve2[0].shape, dtype=np.int64))
     curve3d = np.column_stack(curve3d).astype(np.float64)
@@ -89,8 +93,11 @@ def draw_curve(radius, cam_frame):
         # x = view[0]/view[3]
         # y = view[1]/view[3]
         # z = view[2]/view[3]
-        x = f * (curve_cam[i][0]/-curve_cam[i][2]) + 0.617/2
-        y = f * (curve_cam[i][1]/-curve_cam[i][2]) + 0.455/2
+        # x = f * (curve_cam[i][0]/-curve_cam[i][2]) + 0.617/2
+        # y = f * (curve_cam[i][1]/-curve_cam[i][2]) + 0.455/2
+
+        x = curve_cam[i][0]/-curve_cam[i][2]
+        y = curve_cam[i][1]/-curve_cam[i][2]
 
         x_norm = (x+1)/2
         y_norm = (y+1)/2
