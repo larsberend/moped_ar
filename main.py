@@ -15,6 +15,7 @@ def main():
     csv_path = '../100GOPRO/kandidaten/csv/'
     video_path = '../100GOPRO/kandidaten/'
     file = '3_2'
+    start_msec = 4000.0
     test = turn()
     cmad = CMad()
 
@@ -25,8 +26,9 @@ def main():
     radius_madgwick[0] -= radius_madgwick[0,0]
     cap = cv.VideoCapture(video_path + file + '.mp4')
     # print(cap.isOpened())
-    current = 0
+    out = cv.VideoWriter('3_2_curve.avi', cv.VideoWriter_fourcc('M','J','P','G'), 59.94, (1920,1080))
     font = cv.FONT_HERSHEY_SIMPLEX
+    cap.set(0, start_msec)
     while(cap.isOpened()):
         # Capture frame-by-frame
         ret, frame = cap.read()
@@ -57,7 +59,7 @@ def main():
             y_offset = np.int(height/3) - bird_view.shape[0]
             frame[y_offset:y_offset+bird_view.shape[0], x_offset:x_offset+bird_view.shape[1]] = bird_view
 
-
+            # out.write(frame)
             cv.imshow('frame', frame)
             # cv.imwrite('frameNr_' + str(cap.get(0)) + '.png', frame)
             # current += 4
@@ -68,6 +70,7 @@ def main():
 
     # When everything done, release the capture
     cap.release()
+    out.release()
     cv.destroyAllWindows()
 
 

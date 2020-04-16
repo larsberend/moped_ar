@@ -22,7 +22,7 @@ if __name__=='__main__':
     path = '../100GOPRO/kandidaten/csv/'
     file = '3_2-'
 
-    gyroAcclGps_pd = pd.read_csv(path + file + 'gyroAcclGpsRA_scharfRechts.csv')
+    gyroAcclGps_pd = pd.read_csv(path + file + 'gyroAcclGpsRA.csv')
     gyroAcclGps = gyroAcclGps_pd.to_numpy()
 
     gyro = gyroAcclGps[:, 3:6]

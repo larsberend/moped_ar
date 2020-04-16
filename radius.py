@@ -40,7 +40,7 @@ class turn():
 
 if __name__=='__main__':
     path = '../100GOPRO/kandidaten/csv/'
-    file = '2_complete-'
+    file = '3_2-'
     test = turn()
     cmad = CMad()
     vel = np.nan

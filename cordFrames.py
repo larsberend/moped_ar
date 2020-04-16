@@ -72,7 +72,7 @@ def get_cordFrames():
                           name='IMU',
                           world_frame=world_frame,
                           parent=world_frame, children=[],
-                          transToParent=transform(np.array([0, -121.37, 0], dtype=np.float64),
+                          transToParent=transform(np.array([0, -1.2137, 0], dtype=np.float64),
                                                   R.from_quat(np.array([[np.sin(np.pi/2), 0, 0, np.cos(np.pi/2)],
                                                                         [0, 0, np.sin(-np.pi/4),np.cos(-np.pi/4)]
                                                                        ], dtype=np.float64))
@@ -89,7 +89,7 @@ def get_cordFrames():
                           world_frame=world_frame,
                           parent=world_frame,
                           children=[],
-                          transToParent=transform(np.array([0, -121.37, 0], dtype=np.float64),
+                          transToParent=transform(np.array([0, -1.2137, 0], dtype=np.float64),
                           R.from_quat(np.array([0, np.sin(np.pi/2), 0, np.cos(np.pi/2)], dtype=np.float64)))
                           )
 

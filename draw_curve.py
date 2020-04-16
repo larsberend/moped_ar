@@ -16,29 +16,27 @@ from cordFrames import get_cordFrames
 # actual focal length = equivalent focal length / crop factor
 # 19/5.6 =
 
-f = np.float64(1.9/5.6)
+f = np.float64(0.019/5.6)
 AoV_hor = 1.476549
 AoV_ver = 1.181588
-z_far = 1000
-z_near = 50
+z_far = 300
+z_near = 1.5
 
 
 def draw_curve(radius, cam_frame):
     # get curve radius in m, convert to cm
     # radius = 20
     if np.abs(radius) > 300:
-        curve2 = line(0,1,0,3000)
+        curve2 = line(0,1,0,300)
         # print('line')
     else:
-        radius *= 10
+        # radius *= 10
         # print(radius)
         # calculate circle perimeter in 2d, extend to 3d(4d) with y-values=0 (1 for 4th dim)
         curve2 = np.array(circle_perimeter(np.int(radius), 0, np.abs(np.int(radius))))
 
-        curve2
         # eliminate coords behind camera
         a, b = curve2
-        # print(a.shape)
         a2 = []# np.zeros((np.int(a.shape[0]/2)-1))
         b2 = []# np.zeros((np.int(a.shape[0]/2)-1))
 
@@ -46,9 +44,6 @@ def draw_curve(radius, cam_frame):
             if b[x]>0:
                 a2.append(a[x])
                 b2.append(b[x])
-
-        # print(a)
-        # print(b)
         curve2 = (np.asarray(a2), np.asarray(b2))
 
     curve3d = (curve2[0], np.zeros(curve2[0].shape, dtype=np.int64),curve2[1], np.ones(curve2[0].shape, dtype=np.int64))
@@ -69,18 +64,21 @@ def draw_curve(radius, cam_frame):
 
     # combine trans and rot
     trans_rot = np.dot(homog_rot, homog_pos)
-    # print(trans_rot)
+    print(trans_rot)
     # curve_homog = np.zeros((curve3d.shape[0], curve3d.shape[1]))
     curve_cam = np.zeros_like(curve3d)
     curve_proj = np.column_stack(np.zeros_like(curve2)).astype(np.float64)
 
-    # perp_proj_mat = np.zeros((4,4), dtype=np.float64)
-    # perp_proj_mat[0,0] = np.arctan(AoV_hor/2)
-    # perp_proj_mat[1,1] = np.arctan(AoV_ver/2)
-    # perp_proj_mat[2,2] = 2/(z_far-z_near)
-    # perp_proj_mat[2,3] = (z_far+z_near)/(z_far-z_near)
-    # perp_proj_mat[3,2] = -1
-    # print(perp_proj_mat)
+    perp_proj_mat = np.zeros((4,4), dtype=np.float64)
+    perp_proj_mat[0,0] = np.arctan(AoV_hor/2)
+    perp_proj_mat[1,1] = np.arctan(AoV_hor/2)
+    perp_proj_mat[2,2] = -z_far/(z_far-z_near)
+    perp_proj_mat[3,2] = -(z_far*z_near)/(z_far-z_near)
+    perp_proj_mat[2,3] = -1
+
+    print(perp_proj_mat)
+
+
 
 
     for i in range(curve3d.shape[0]):
@@ -91,52 +89,55 @@ def draw_curve(radius, cam_frame):
 
         curve_cam[i] = np.dot(trans_rot, curve3d[i])
 
-        # view = np.dot(curve_cam[i], perp_proj_mat)
-        # view = np.dot(perp_proj_mat, curve_cam[i])
+        # print(curve_cam[i])
+        view = np.dot(curve_cam[i], perp_proj_mat)
 
+        view = view / view[-1]
+        # print('view')
         # print(view)
 
         # image space :
         # x = view[0]/view[3]
         # y = view[1]/view[3]
         # z = view[2]/view[3]
-        # x = f * (curve_cam[i][0]/-curve_cam[i][2]) + 0.617/2
-        # y = f * (curve_cam[i][1]/-curve_cam[i][2]) + 0.455/2
+        # x = f * (curve_cam[i][0]/-curve_cam[i][2]) + 0.0617/2
+        # y = f * (curve_cam[i][1]/-curve_cam[i][2]) + 0.0455/2
 
-        x = curve_cam[i][0]/-curve_cam[i][2]
-        y = curve_cam[i][1]/-curve_cam[i][2]
-
+        # x = f * (curve_cam[i][0]/-curve_cam[i][2])
+        # y = f * (curve_cam[i][1]/-curve_cam[i][2])
+        x,y = view[:2]
+        curve_proj[i] = x,y
+        # print(x,y)
         x_norm = (x+1)/2
         y_norm = (y+1)/2
 
         x_rast = np.floor(x_norm * 1920)
         y_rast = np.floor(y_norm * 1080)
-        curve_proj[i] = x_rast,y_rast
+        curve_proj[i] = x_rast, y_rast
         # calc pos on 'film' of camera, discard everythin behind camera.
         # if np.greater(curve_cam[i,2],0):
         #     x_film = f * (curve_cam[i,0]/curve_cam[i,3]) + 0.617/2
         #     y_film = f * (curve_cam[i,1]/curve_cam[i,3]) + 0.455/2
-        #     # curve_proj[i] = x_film*100, y_film*100
-        #     curve_proj[i] = x*100, y*100
 
-    # print(np.amin(curve_proj[0, :]))
-    # print(np.amax(curve_proj[0, :]))
-    # print(np.mean(curve_proj[0, :]))
-    #
-    # print(np.amin(curve_proj[1, :]))
-    # print(np.amax(curve_proj[1, :]))
-    # print(np.mean(curve_proj[1, :]))
 
-    # print(curve_proj))
+    print(np.amin(curve_proj[0, :]))
+    print(np.amax(curve_proj[0, :]))
+    print(np.mean(curve_proj[0, :]))
+
+    print(np.amin(curve_proj[1, :]))
+    print(np.amax(curve_proj[1, :]))
+    print(np.mean(curve_proj[1, :]))
+
+    # print(curve_proj)
     return curve_proj, bird_view(curve2)
 
 def bird_view(curve2):
     my_dpi=96
     fig = plt.figure(figsize=(320/my_dpi, 240/my_dpi), dpi=my_dpi)
     sc = fig.add_subplot(111)
-    sc.scatter(curve2[0]/10,curve2[1]/10, marker='x', color='red', label='time in ms')
-    sc.set_xlim(-200, 200)
-    sc.set_ylim(-200, 200)
+    sc.scatter(curve2[0],curve2[1], marker='x', color='red', label='time in ms')
+    sc.set_xlim(-100, 100)
+    sc.set_ylim(-100, 100)
     sc.set_title('Birdview of circle in m')
     sc.invert_xaxis()
     fig.canvas.draw()
@@ -148,5 +149,5 @@ def bird_view(curve2):
 
 if __name__ == '__main__':
     world_frame, plane_frame, cam_frame = get_cordFrames()
-    _, curve2 = draw_curve(-2000, cam_frame)
+    _, curve2 = draw_curve(-20, cam_frame)
     # print(curve2)
