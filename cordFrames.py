@@ -40,7 +40,7 @@ class cordFrame():
             self.transToParent = newTransToParent
 
     def __str__(self):
-        return 'Coordinate Frame for {}.\nPosition relative to world frame:\n{}\nOrientation:\n{}'.format(self.name, self.transToWorld.trans, self.transToWorld.rotQuat.as_quat())
+        return 'Coordinate Frame for {}.\nTranslation to world frame:\n{}\nOrientation:\n{}'.format(self.name, self.transToWorld.trans, self.transToWorld.rotQuat.as_quat())
     #
     # def getParent(self):
     #     return self.parent
@@ -92,6 +92,15 @@ def get_cordFrames():
                           transToParent=transform(np.array([0, -1.2137, 0], dtype=np.float64),
                           R.from_quat(np.array([0, np.sin(np.pi/2), 0, np.cos(np.pi/2)], dtype=np.float64)))
                           )
+    # cam_frame = cordFrame(data=None,
+    #                       name='Camera',
+    #                       world_frame=world_frame,
+    #                       parent=world_frame,
+    #                       children=[],
+    #                       transToParent=transform(np.array([0, -1.2137, 0], dtype=np.float64),
+    #                       R.from_quat([0, np.sin(np.pi/2), 0, np.cos(np.pi/2)]) * R.from_quat([np.sin(-np.pi/32),0,0,np.cos(-np.pi/32)])
+    #                       )
+    #                       )
 
     # img_frame = cordFrame(data=None,
     #                         name='Image',
@@ -106,6 +115,6 @@ def get_cordFrames():
     # print(world_frame)
     # print(plane_frame)
     # print(imu_frame)
-    # print(cam_frame)
+    print(cam_frame)
 
     return world_frame, plane_frame, cam_frame

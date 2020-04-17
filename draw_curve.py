@@ -16,7 +16,11 @@ from cordFrames import get_cordFrames
 # actual focal length = equivalent focal length / crop factor
 # 19/5.6 =
 
-f = np.float64(0.019/5.6)
+f = np.float64(0.035/5.6)
+# sensor size
+pu = np.float64(0.0062/1920)
+pv = np.float64(0.0045/1080)
+
 AoV_hor = 1.476549
 AoV_ver = 1.181588
 z_far = 20
@@ -25,16 +29,13 @@ z_near = 1
 
 def draw_curve(radius, cam_frame):
     # get curve radius in m, convert to cm
-    # radius = 20
-    z_far=radius
     if np.abs(radius) > 300:
         curve2 = line(0,1,0,300)
         # print('line')
     else:
         # radius *= 10
         # print(radius)
-        # calculate circle perimeter in 2d, extend to 3d(4d) with y-values=0 (1 for 4th dim)
-        # curve2 = np.array(circle_perimeter(0, 0, np.abs(np.int(radius))))
+        # calculate circle perimeter in 2d
         curve2 = np.array(circle_perimeter(np.int(radius), 0, np.abs(np.int(radius))))
 
         # eliminate coords behind camera
@@ -43,11 +44,12 @@ def draw_curve(radius, cam_frame):
         b2 = []# np.zeros((np.int(a.shape[0]/2)-1))
 
         for x in range(a.shape[0]):
-            if b[x]>0:
+            if b[x]>=0:
                 a2.append(a[x])
                 b2.append(b[x])
         curve2 = (np.asarray(a2), np.asarray(b2))
-
+    print(curve2)
+    # extend to 3d(4d) with y-values=0 (1 for 4th dim)
     curve3d = (curve2[0], np.zeros(curve2[0].shape, dtype=np.int64),curve2[1], np.ones(curve2[0].shape, dtype=np.int64))
     curve3d = np.column_stack(curve3d).astype(np.float64)
     # print(curve3d)
@@ -66,19 +68,19 @@ def draw_curve(radius, cam_frame):
 
     # combine trans and rot
     trans_rot = np.dot(homog_rot, homog_pos)
-    # print(trans_rot)
+    print(trans_rot)
     # curve_homog = np.zeros((curve3d.shape[0], curve3d.shape[1]))
     curve_cam = np.zeros_like(curve3d)
     curve_proj = np.column_stack(np.zeros_like(curve2)).astype(np.float64)
 
-    perp_proj_mat = np.zeros((4,4), dtype=np.float64)
-    perp_proj_mat[0,0] = np.arctan(AoV_hor/2)
-    perp_proj_mat[1,1] = np.arctan(AoV_ver/2)
-    # perp_proj_mat[2,2] = -1
-    # perp_proj_mat[3,2] = -1
-    perp_proj_mat[2,2] = -z_far/(z_far-z_near)
-    perp_proj_mat[3,2] = -(z_far*z_near)/(z_far-z_near)
-    perp_proj_mat[2,3] = -1
+    # perp_proj_mat = np.zeros((4,4), dtype=np.float64)
+    # perp_proj_mat[0,0] = np.arctan(AoV_hor/2)
+    # perp_proj_mat[1,1] = np.arctan(AoV_ver/2)
+    # # perp_proj_mat[2,2] = -1
+    # # perp_proj_mat[3,2] = -1
+    # perp_proj_mat[2,2] = -z_far/(z_far-z_near)
+    # perp_proj_mat[3,2] = -(z_far*z_near)/(z_far-z_near)
+    # perp_proj_mat[2,3] = -1
 
     # print(perp_proj_mat)
 
@@ -92,35 +94,39 @@ def draw_curve(radius, cam_frame):
         # curve_homog[i] = np.dot(trans_rot, curve3d[i])
 
         curve_cam[i] = np.dot(trans_rot, curve3d[i])
-
-        # print(curve_cam[i])
-        view = np.dot(curve_cam[i], perp_proj_mat)
-        # print(view)
-        view = view[:3] / view[3]
+        print('curve_cam')
+        print(curve_cam[i])
+        # view = np.dot(curve_cam[i], perp_proj_mat)
+        # view = view[:3] / view[3]
         # print('view')
         # print(view)
 
-        # image space :
-        # x = view[0]/view[3]
-        # y = view[1]/view[3]
-        # z = view[2]/view[3]
-        # x = f * (curve_cam[i][0]/-curve_cam[i][2]) + 0.0617/2
+        x = (f * curve_cam[i][0]) / -curve_cam[i][2]
+        u = x/pu + 960
+
+        y = (f * curve_cam[i][1]) / -curve_cam[i][2]
+        v = y/pv + 540
+        print('x,y')
+        print((x,y))
+        print('u,v')
+        print((u,v))
         # y = f * (curve_cam[i][1]/-curve_cam[i][2]) + 0.0455/2
 
         # x = f * (curve_cam[i][0]/-curve_cam[i][2])
         # y = f * (curve_cam[i][1]/-curve_cam[i][2])
-        x,y = view[:2]
+        # x,y = view[:2]
         # print((x,y))
-        curve_proj[i] = x,y
-        # print(x,y)
-
-        x_norm = (x+1)/2
-        y_norm = (y+1)/2
-
-        x_rast = np.floor(x_norm * 1920)
-        y_rast = np.floor(y_norm * 1080)
+        # curve_proj[i] = x,y
+        # # print(x,y)
+        #
+        # x_norm = (x+1)/2
+        # y_norm = (y+1)/2
+        #
+        # x_rast = np.floor(x_norm * 1920)
+        # y_rast = np.floor(y_norm * 1080)
         # print((y, y_norm, y_rast))
-        curve_proj[i] = x_rast, y_rast
+        # curve_proj[i] = x_rast, y_rast
+        curve_proj[i] = u, v
         # calc pos on 'film' of camera, discard everythin behind camera.
         # if np.greater(curve_cam[i,2],0):
         #     x_film = f * (curve_cam[i,0]/curve_cam[i,3]) + 0.617/2

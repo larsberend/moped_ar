@@ -48,9 +48,9 @@ def main():
             cv.putText(frame, 'MIlliseconds(IMU): %s'%(mil), (1650,60), font, 0.5, (0, 255, 0), 2, cv.LINE_AA)
             # print(radius)
             curve_proj, bird_view = draw_curve(radius, cam_frame)
-
             for j in curve_proj.astype(np.int32):
-                cv.circle(frame, (j[0], j[1]), 5, (0,255,0))
+                if j[0]<1920 and j[1]<1080:
+                    cv.circle(frame, (j[0], j[1]), 5, (0,255,0))
 
             # Display the resulting frame
             # print(frame.shape)
@@ -61,6 +61,8 @@ def main():
 
             # out.write(frame)
             cv.imshow('frame', frame)
+            cv.imwrite('problem2.png', frame)
+            quit()
             # cv.imwrite('frameNr_' + str(cap.get(0)) + '.png', frame)
             # current += 4
             # print(radius)
@@ -79,17 +81,6 @@ def find_nearest(array, value):
     idx = (np.abs(array - value)).argmin()
     # print(idx)
     return idx
-
-
-
-
-
-
-
-
-
-
-
 
 
 
