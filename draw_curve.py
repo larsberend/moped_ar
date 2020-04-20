@@ -6,8 +6,10 @@ import matplotlib.pyplot as plt
 import cv2 as cv
 from cordFrames import get_cordFrames
 
+# https://robotacademy.net.au/masterclass/the-geometry-of-image-formation/?lesson=777
+
 # kreis in koordinatensystem. ursprung: schnittpunkt motorrad, ebene (stuetzpunkt)
-# einheit: cm
+# einheit: m
 # kreis liegt auf ebene, also Y-Koordinate konstant 0
 
 # zu bild Koordinaten:
@@ -16,130 +18,94 @@ from cordFrames import get_cordFrames
 # actual focal length = equivalent focal length / crop factor
 # 19/5.6 =
 
-f = np.float64(0.035/5.6)
+f = np.float64(0.019/5.6)
 # sensor size
 pu = np.float64(0.0062/1920)
 pv = np.float64(0.0045/1080)
-
-AoV_hor = 1.476549
-AoV_ver = 1.181588
-z_far = 20
-z_near = 1
-
+u0 = 960
+v0 = 540
 
 def draw_curve(radius, cam_frame):
-    # get curve radius in m, convert to cm
-    if np.abs(radius) > 300:
-        curve2 = line(0,1,0,300)
+    # radius = 10
+    if np.abs(radius) > 1000:
+        curve2 = line(0,1,0,3000)
         # print('line')
     else:
         # radius *= 10
         # print(radius)
-        # calculate circle perimeter in 2d
-        curve2 = np.array(circle_perimeter(np.int(radius), 0, np.abs(np.int(radius))))
+        # calculate circle perimeter in 2d (function gives tuple of arrays: ([x-cord0, x-cord1, ...], [z-cord0, zcord1,...]))
+        a, b = np.array(circle_perimeter(np.int(radius*10), 0, np.abs(np.int(radius*10))))
 
-        # eliminate coords behind camera
-        a, b = curve2
+
         a2 = []# np.zeros((np.int(a.shape[0]/2)-1))
         b2 = []# np.zeros((np.int(a.shape[0]/2)-1))
 
+        # eliminate points behind camera
         for x in range(a.shape[0]):
-            if b[x]>=0:
+            if b[x]>0:
                 a2.append(a[x])
                 b2.append(b[x])
         curve2 = (np.asarray(a2), np.asarray(b2))
-    print(curve2)
+    # print(curve2)
     # extend to 3d(4d) with y-values=0 (1 for 4th dim)
-    curve3d = (curve2[0], np.zeros(curve2[0].shape, dtype=np.int64),curve2[1], np.ones(curve2[0].shape, dtype=np.int64))
+    curve2 = (curve2[0]/10, curve2[1]/10)
+    curve3d = (curve2[0]/10, np.zeros(curve2[0].shape, dtype=np.int64),curve2[1]/10, np.ones(curve2[0].shape, dtype=np.int64))
     curve3d = np.column_stack(curve3d).astype(np.float64)
+
+    # now: array of 4-dim array: [[x0, 0, z0, 1], [x1, 0, z1, 1], ...]
+
     # print(curve3d)
 
     # camera rotation inverse (from parent(world) to camera), homogeneous
-    cam_mat = cam_frame.transToWorld.rotQuat.inv().as_matrix()
-    homog_rot = np.zeros((cam_mat.shape[0]+1, cam_mat.shape[1]+1))
-    # print(homog_rot)
-    homog_rot[:-1,:-1] = cam_mat
+    cam_rot = cam_frame.transToWorld.rot.inv().as_matrix()
+    print(cam_rot)
+    homog_rot = np.zeros((cam_rot.shape[0]+1, cam_rot.shape[1]+1))
+    homog_rot[:-1,:-1] = cam_rot
     homog_rot[-1,-1] = 1
 
     # homogeneous camera translation
     cam_trans = cam_frame.transToWorld.trans
     homog_pos = np.identity(4)
-    homog_pos[:-1, -1] =- cam_trans
+    homog_pos[:-1, -1] = cam_trans
 
     # combine trans and rot
     trans_rot = np.dot(homog_rot, homog_pos)
-    print(trans_rot)
-    # curve_homog = np.zeros((curve3d.shape[0], curve3d.shape[1]))
-    curve_cam = np.zeros_like(curve3d)
+    trans_rot = trans_rot
+    # print(trans_rot)
+    # matrices for camera intrinsics
+    pixel_mat = np.array([[1/pu,0,u0], [0,1/pv,v0],[0,0,1]], dtype=np.float64)
+    # wieso -f ?
+    focal_mat = np.array([[-f,0,0,0],[0,f,0,0], [0,0,1,0]], dtype=np.float64)
+
+    # put all together --> camera matrix C
+    K = np.dot(pixel_mat, focal_mat)
+    C = np.dot(K, trans_rot)
+
+    # print(K)
+    # print(C)
+
     curve_proj = np.column_stack(np.zeros_like(curve2)).astype(np.float64)
-
-    # perp_proj_mat = np.zeros((4,4), dtype=np.float64)
-    # perp_proj_mat[0,0] = np.arctan(AoV_hor/2)
-    # perp_proj_mat[1,1] = np.arctan(AoV_ver/2)
-    # # perp_proj_mat[2,2] = -1
-    # # perp_proj_mat[3,2] = -1
-    # perp_proj_mat[2,2] = -z_far/(z_far-z_near)
-    # perp_proj_mat[3,2] = -(z_far*z_near)/(z_far-z_near)
-    # perp_proj_mat[2,3] = -1
-
-    # print(perp_proj_mat)
-
-
-
-
     for i in range(curve3d.shape[0]):
-        # print(homog_rot[i])
-        # print(homog_pos[i])
 
-        # curve_homog[i] = np.dot(trans_rot, curve3d[i])
+        u,v,w = np.dot(C, curve3d[i])
+        # print(u,v,w)
+        curve_proj[i] = u/w, v/w
 
-        curve_cam[i] = np.dot(trans_rot, curve3d[i])
-        print('curve_cam')
-        print(curve_cam[i])
-        # view = np.dot(curve_cam[i], perp_proj_mat)
-        # view = view[:3] / view[3]
-        # print('view')
-        # print(view)
-
-        x = (f * curve_cam[i][0]) / -curve_cam[i][2]
-        u = x/pu + 960
-
-        y = (f * curve_cam[i][1]) / -curve_cam[i][2]
-        v = y/pv + 540
-        print('x,y')
-        print((x,y))
-        print('u,v')
-        print((u,v))
-        # y = f * (curve_cam[i][1]/-curve_cam[i][2]) + 0.0455/2
-
-        # x = f * (curve_cam[i][0]/-curve_cam[i][2])
-        # y = f * (curve_cam[i][1]/-curve_cam[i][2])
-        # x,y = view[:2]
-        # print((x,y))
-        # curve_proj[i] = x,y
-        # # print(x,y)
+        # x = (f * curve_cam[i][0]) / -curve_cam[i][2]
+        # u = x/pu + 960
         #
-        # x_norm = (x+1)/2
-        # y_norm = (y+1)/2
-        #
-        # x_rast = np.floor(x_norm * 1920)
-        # y_rast = np.floor(y_norm * 1080)
-        # print((y, y_norm, y_rast))
-        # curve_proj[i] = x_rast, y_rast
-        curve_proj[i] = u, v
-        # calc pos on 'film' of camera, discard everythin behind camera.
-        # if np.greater(curve_cam[i,2],0):
-        #     x_film = f * (curve_cam[i,0]/curve_cam[i,3]) + 0.617/2
-        #     y_film = f * (curve_cam[i,1]/curve_cam[i,3]) + 0.455/2
+        # y = (f * curve_cam[i][1]) / -curve_cam[i][2]
+        # v = y/pv + 540
 
 
-    # print(np.amin(curve_proj[0, :]))
-    # print(np.amax(curve_proj[0, :]))
-    # print(np.mean(curve_proj[0, :]))
-    #
-    # print(np.amin(curve_proj[1, :]))
-    # print(np.amax(curve_proj[1, :]))
-    # print(np.mean(curve_proj[1, :]))
+
+    print(np.amin(curve_proj[0, :]))
+    print(np.amax(curve_proj[0, :]))
+    print(np.mean(curve_proj[0, :]))
+
+    print(np.amin(curve_proj[1, :]))
+    print(np.amax(curve_proj[1, :]))
+    print(np.mean(curve_proj[1, :]))
 
     # print(curve_proj)
     return curve_proj, bird_view(curve2)

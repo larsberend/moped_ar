@@ -29,6 +29,7 @@ def main():
     out = cv.VideoWriter('3_2_curve.avi', cv.VideoWriter_fourcc('M','J','P','G'), 59.94, (1920,1080))
     font = cv.FONT_HERSHEY_SIMPLEX
     cap.set(0, start_msec)
+    frame_nr_int = 0
     while(cap.isOpened()):
         # Capture frame-by-frame
         ret, frame = cap.read()
@@ -60,9 +61,10 @@ def main():
             frame[y_offset:y_offset+bird_view.shape[0], x_offset:x_offset+bird_view.shape[1]] = bird_view
 
             # out.write(frame)
-            cv.imshow('frame', frame)
-            cv.imwrite('problem2.png', frame)
-            quit()
+            # cv.imwrite('../100GOPRO/kandidaten/3_2_processed/%s.png'%(frame_nr_int), frame)
+            frame_nr_int += 1
+            cv.imshow(file, frame)
+            # quit()
             # cv.imwrite('frameNr_' + str(cap.get(0)) + '.png', frame)
             # current += 4
             # print(radius)
