@@ -21,11 +21,9 @@ def main():
 
 
     radius_madgwick = pd.read_csv(csv_path + file + '-gyroAcclGpsMadgwick.csv')[['Milliseconds','Radius']].to_numpy()[2:].swapaxes(1,0)
-    # print(radius_madgwick)
-    # print(video_path+'.mp4')
+
     radius_madgwick[0] -= radius_madgwick[0,0]
     cap = cv.VideoCapture(video_path + file + '.mp4')
-    # print(cap.isOpened())
     out = cv.VideoWriter('3_2_curve.avi', cv.VideoWriter_fourcc('M','J','P','G'), 59.94, (1920,1080))
     font = cv.FONT_HERSHEY_SIMPLEX
     cap.set(0, start_msec)
@@ -38,10 +36,6 @@ def main():
         if ret:
             height,width = frame.shape[:2]
             nearest_rad = find_nearest(radius_madgwick[0], cap.get(0))
-            # print(radius_madgwick[0])
-            # print(cap.get(0))
-            # print(nearest_rad)
-            # print(radius_madgwick[0,nearest_rad])
 
             mil, radius = radius_madgwick[:,nearest_rad]
             cv.putText(frame, 'Frame Nr: %s'%(cap.get(0)), (1650,20), font, 0.5, (0, 255, 0), 2, cv.LINE_AA)
@@ -61,7 +55,7 @@ def main():
             frame[y_offset:y_offset+bird_view.shape[0], x_offset:x_offset+bird_view.shape[1]] = bird_view
 
             # out.write(frame)
-            # cv.imwrite('../100GOPRO/kandidaten/3_2_processed/%s.png'%(frame_nr_int), frame)
+            cv.imwrite('../100GOPRO/kandidaten/3_2_processed/%s.png'%(frame_nr_int), frame)
             frame_nr_int += 1
             cv.imshow(file, frame)
             # quit()

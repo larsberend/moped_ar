@@ -58,7 +58,7 @@ def draw_curve(radius, cam_frame):
 
     # camera rotation inverse (from parent(world) to camera), homogeneous
     cam_rot = cam_frame.transToWorld.rot.inv().as_matrix()
-    print(cam_rot)
+    # print(cam_rot)
     homog_rot = np.zeros((cam_rot.shape[0]+1, cam_rot.shape[1]+1))
     homog_rot[:-1,:-1] = cam_rot
     homog_rot[-1,-1] = 1
@@ -91,21 +91,21 @@ def draw_curve(radius, cam_frame):
         # print(u,v,w)
         curve_proj[i] = u/w, v/w
 
-        # x = (f * curve_cam[i][0]) / -curve_cam[i][2]
+        # x = (f * X / -Z
         # u = x/pu + 960
         #
-        # y = (f * curve_cam[i][1]) / -curve_cam[i][2]
+        # y = (f * Y / -Z
         # v = y/pv + 540
 
 
-
-    print(np.amin(curve_proj[0, :]))
-    print(np.amax(curve_proj[0, :]))
-    print(np.mean(curve_proj[0, :]))
-
-    print(np.amin(curve_proj[1, :]))
-    print(np.amax(curve_proj[1, :]))
-    print(np.mean(curve_proj[1, :]))
+    #
+    # print(np.amin(curve_proj[0, :]))
+    # print(np.amax(curve_proj[0, :]))
+    # print(np.mean(curve_proj[0, :]))
+    #
+    # print(np.amin(curve_proj[1, :]))
+    # print(np.amax(curve_proj[1, :]))
+    # print(np.mean(curve_proj[1, :]))
 
     # print(curve_proj)
     return curve_proj, bird_view(curve2)
