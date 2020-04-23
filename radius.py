@@ -6,8 +6,9 @@
 
 import numpy as np
 import pandas as pd
-from CMadgwick_wenigSelf import CMad
+from CMadgwick import CMad
 from scipy.spatial.transform import Rotation as R
+import sys
 
 class turn():
 
@@ -20,6 +21,7 @@ class turn():
         self.radius = np.divide(np.power(vel, 2), np.multiply(np.tan(ang), g))
         return self.radius
 
+    # Simple integration, no Madgwick
     def calcAng(self, gyro0, gyro1):
         gyro0_Z = np.amin([gyro0[3], gyro1[3]])
         gyro1_Z = np.amax([gyro0[3], gyro1[3]])
@@ -39,8 +41,8 @@ class turn():
         return self.radius
 
 if __name__=='__main__':
-    path = '../100GOPRO/kandidaten/csv/'
-    file = '3_2-'
+    path = '/mnt/c/Users/bb/Documents/Moped_AR/100GOPRO/kandidaten/csv/'
+    file = sys.argv[1] + '-'
     test = turn()
     cmad = CMad()
     vel = np.nan
@@ -52,6 +54,8 @@ if __name__=='__main__':
     rows, cols = gyroAcclGps_pd.shape
     gyroAcclGps = np.full(shape=(rows, cols+2), fill_value=np.nan)
     gyroAcclGps[:, :-2] = gyroAcclGps_pd.to_numpy()
+    quats = []
+    print(gyro.shape)
     # print(gyroAcclGps.shape)
     # print(gyroAcclGps_pd.shape)
     # print(range(gyroAcclGps.shape[0]-1))
@@ -70,14 +74,15 @@ if __name__=='__main__':
         quat = cmad.MadgwickAHRSupdateIMU(gx, gy, gz, ax, ay, az)
         r = R.from_quat([quat[1], quat[2], quat[3], quat[0]])
         xyz = r.as_euler('xyz', degrees=False)
-
         angle = xyz[2]
         gyroAcclGps[i, -2] = angle
 
         radius = test.calcRad(vel, angle, 9.81)
         gyroAcclGps[i, -1] = radius
+        quats.append(list(quat))
 
-    gyroAcclGpsRA = gyroAcclGps_pd.assign(Radius=gyroAcclGps[:,-1], Angle=gyroAcclGps[:,-2])
+    gyroAcclGpsRA = gyroAcclGps_pd.assign(Radius=gyroAcclGps[:,-1], Angle=gyroAcclGps[:,-2], Quat=quats)
     print(gyroAcclGpsRA.head())
-
-    gyroAcclGpsRA.to_csv(path + file + 'gyroAcclGpsMadgwick.csv')
+    print(gyroAcclGpsRA.dtypes)
+    # quit()
+    gyroAcclGpsRA.to_csv(path + file + 'gyroAcclGpsMadgwickQuat.csv')

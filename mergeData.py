@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import sys
 
 def fromToCSV(gyro, accl, gps, path, file):
     gyroAccl = gyro.merge(accl, how='outer', on='Milliseconds')
@@ -12,8 +13,9 @@ def fromToCSV(gyro, accl, gps, path, file):
     print(gyroAcclGps.head())
 
 if __name__=='__main__':
-    path = '../100GOPRO/kandidaten/csv/'
-    file = '2_complete-'
+
+    path = '/mnt/c/Users/bb/Documents/Moped_AR/100GOPRO/kandidaten/csv/'
+    file = sys.argv[1] + '-'
     gyro = pd.read_csv(path + file + 'gyro.csv')
     accl = pd.read_csv(path + file + 'accl.csv')
     gps = pd.read_csv(path + file + 'gps.csv')

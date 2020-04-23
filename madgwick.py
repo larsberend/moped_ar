@@ -3,7 +3,7 @@ import numpy as np
 import quaternion
 import pandas as pd
 # from madgwick_py import madgwickahrs
-from CMadgwick_wenigSelf import CMad
+from CMadgwick import CMad
 from scipy.spatial.transform import Rotation as R
 
 
@@ -20,7 +20,7 @@ def orientation(gyro, accl, cmad):
 
 if __name__=='__main__':
     path = '../100GOPRO/kandidaten/csv/'
-    file = '3_2-'
+    file = '2_5-'
 
     gyroAcclGps_pd = pd.read_csv(path + file + 'gyroAcclGpsRA.csv')
     gyroAcclGps = gyroAcclGps_pd.to_numpy()

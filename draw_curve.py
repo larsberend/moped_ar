@@ -26,7 +26,7 @@ u0 = 960
 v0 = 540
 
 def draw_curve(radius, cam_frame):
-    # radius = 10
+    # radius = 2000
     if np.abs(radius) > 1000:
         curve2 = line(0,1,0,3000)
         # print('line')
@@ -43,6 +43,7 @@ def draw_curve(radius, cam_frame):
         # eliminate points behind camera
         for x in range(a.shape[0]):
             if b[x]>0:
+                # if np.linalg.norm(a[x]-b[x])<1000:
                 a2.append(a[x])
                 b2.append(b[x])
         curve2 = (np.asarray(a2), np.asarray(b2))
@@ -75,7 +76,7 @@ def draw_curve(radius, cam_frame):
     # matrices for camera intrinsics
     pixel_mat = np.array([[1/pu,0,u0], [0,1/pv,v0],[0,0,1]], dtype=np.float64)
     # wieso -f ?
-    focal_mat = np.array([[-f,0,0,0],[0,f,0,0], [0,0,1,0]], dtype=np.float64)
+    focal_mat = np.array([[f,0,0,0],[0,-f,0,0], [0,0,1,0]], dtype=np.float64)
 
     # put all together --> camera matrix C
     K = np.dot(pixel_mat, focal_mat)
@@ -108,12 +109,20 @@ def draw_curve(radius, cam_frame):
     # print(np.mean(curve_proj[1, :]))
 
     # print(curve_proj)
-    return curve_proj, bird_view(curve2)
+    return curve_proj, bird_view(curve2, trans_rot)
 
-def bird_view(curve2):
+def bird_view(curve2, trans_rot):
+    print(trans_rot)
+    look_dir = [[0,0,0,1],[0,0,50,1]]
+
+    homog_look_dir = np.dot(trans_rot, look_dir[0]), np.dot(trans_rot, look_dir[1])
+
+    cam_z = homog_look_dir[0][0],homog_look_dir[0][2],homog_look_dir[1][0],homog_look_dir[1][2]
+
     my_dpi=96
     fig = plt.figure(figsize=(320/my_dpi, 240/my_dpi), dpi=my_dpi)
     sc = fig.add_subplot(111)
+    sc.arrow(*cam_z, head_width=5, head_length=7, fc='blue',ec='black')
     sc.scatter(curve2[0],curve2[1], marker='x', color='red', label='time in ms')
     sc.set_xlim(-100, 100)
     sc.set_ylim(-100, 100)

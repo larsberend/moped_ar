@@ -3,9 +3,9 @@ import numpy as np
 import pandas as pd
 #import mpl_toolkits
 #from mpl_toolkits.basemap import Basemap
-complete_file = '../100GOPRO/kandidaten/csv/2_complete-gyroAcclGpsMadgwick.csv'
+complete_file = '../100GOPRO/kandidaten/csv/2_5-gyroAcclGpsMadgwickQuat.csv'
 gps_file = '../100GOPRO/kandidaten/csv/3_2-gps.csv'
-gyro_file = '../100GOPRO/kandidaten/csv/3_2-gyro.csv'
+gyro_file = '../100GOPRO/kandidaten/csv/2_3-gyro.csv'
 accl_file = '../100GOPRO/kandidaten/csv/3_2-accl.csv'
 def plot_gps(filename):
 
@@ -52,10 +52,10 @@ def plot_gyro(filename):
 
     plt.title('Gyro-Data: Right turn')
 
-    ax1.plot(time, gyro_complete[['GyroX']].to_numpy(dtype='float64'), label= 'GyroX', linewidth=0.2)
-    ax1.plot(time, gyro_complete[['GyroY']].to_numpy(dtype='float64'), label= 'GyroY', linewidth=0.2)
-    ax1.plot(time, gyro_complete[['GyroZ']].to_numpy(dtype='float64'), label= 'GyroZ', linewidth=0.2)
-    ax1.plot(time, RadAng[['Angle']].to_numpy(dtype='float64'), label= 'MadAngle', linewidth=0.2)
+    ax1.plot(time, gyro_complete[['GyroX']].to_numpy(dtype='float64'), label= 'GyroX', linewidth=1)
+    ax1.plot(time, gyro_complete[['GyroY']].to_numpy(dtype='float64'), label= 'GyroY', linewidth=1)
+    ax1.plot(time, gyro_complete[['GyroZ']].to_numpy(dtype='float64'), label= 'GyroZ', linewidth=1)
+    ax1.plot(time, RadAng[['Angle']].to_numpy(dtype='float64'), label= 'MadAngle', linewidth=1)
     # ax1.plot(time, euler[['X']], label= 'EulerX', linewidth=0.2)
     # ax1.plot(time, euler[['Y']], label= 'EulerY', linewidth=0.2)
     # ax1.plot(time, euler[['Z']], label= 'MadAngle', linewidth=0.2)
@@ -68,7 +68,7 @@ def plot_gyro(filename):
         lh._legmarker.set_alpha(0)
 
     ax2 = ax1.twinx()
-    ax2.plot(time, RadAng[['Radius']], label= 'MadRadius', linewidth=0.3, color='black')   #TODO radius Radius in radius.py
+    ax2.plot(time, RadAng[['Radius']], label= 'MadRadius', linewidth=1, color='black')   #TODO radius Radius in radius.py
     plt.ylim(-100, 100)
     plt.ylabel('Radius in m')
     leg = plt.legend()#loc=9)
