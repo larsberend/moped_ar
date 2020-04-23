@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-#import mpl_toolkits
-#from mpl_toolkits.basemap import Basemap
+'''
+Visualize data in plots.
+
+'''
 complete_file = '../100GOPRO/kandidaten/csv/2_5-gyroAcclGpsMadgwickQuat.csv'
 gps_file = '../100GOPRO/kandidaten/csv/3_2-gps.csv'
 gyro_file = '../100GOPRO/kandidaten/csv/2_3-gyro.csv'

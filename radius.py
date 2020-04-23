@@ -1,8 +1,3 @@
-# Calculates radius of a turn.
-# Input: gyro data in rad/s
-#        gravitational accelaration
-#        GPS-data: 2D velocity in m/s
-#        timestamps of both
 
 import numpy as np
 import pandas as pd
@@ -10,9 +5,17 @@ from CMadgwick import CMad
 from scipy.spatial.transform import Rotation as R
 import sys
 
-class turn():
+'''
+Calculates radius of a turn.
+Input: gyro data in rad/s
+gravitational accelaration
+GPS-data: 2D velocity in m/s
+timestamps of both
+following formula described here:
+https://de.wikipedia.org/wiki/Fahrphysik_(Fahrrad)
+'''
 
-    # todo: limit at which curve is straight
+class turn():
     def __init__(self, radius=1000, ang=0):
         self.radius = radius
         self.ang = ang
@@ -21,7 +24,7 @@ class turn():
         self.radius = np.divide(np.power(vel, 2), np.multiply(np.tan(ang), g))
         return self.radius
 
-    # Simple integration, no Madgwick
+    # Simple integration, no Madgwick-Filtering (deprecated)
     def calcAng(self, gyro0, gyro1):
         gyro0_Z = np.amin([gyro0[3], gyro1[3]])
         gyro1_Z = np.amax([gyro0[3], gyro1[3]])
@@ -40,6 +43,8 @@ class turn():
     def getRadius(self):
         return self.radius
 
+# reads candidate-number from stdin, gets csv-file and extends it with radii,
+# angles and quaternions(from madgwick filter)
 if __name__=='__main__':
     path = '/mnt/c/Users/bb/Documents/Moped_AR/100GOPRO/kandidaten/csv/'
     file = sys.argv[1] + '-'
@@ -60,20 +65,22 @@ if __name__=='__main__':
     # print(gyroAcclGps_pd.shape)
     # print(range(gyroAcclGps.shape[0]-1))
     for i in range(gyro.shape[0]):
+        # check if datapoint from gyrometer, since not aligned
         if not np.isnan(gps[i][0]):
             vel = gps[i][2]
         # [t, gyroX, gyroY, gyroZ]
+        # check if datapoint from GPS, since not aligned
         if not np.isnan(gyro[i][0]):
             gx, gy, gz = gyro[i]
             ax, ay, az = accl[i]
-        # if not np.isnan(gyroAcclGps[i+1][4]):
-        #     gyro1 = gyroAcclGps[i+1][1:5]
 
-        # angle = test.calcAng(gyro0, gyro1)
-
+        # calc rotation relative to original position of IMU
         quat = cmad.MadgwickAHRSupdateIMU(gx, gy, gz, ax, ay, az)
         r = R.from_quat([quat[1], quat[2], quat[3], quat[0]])
         xyz = r.as_euler('xyz', degrees=False)
+        # sanitiy check: no problmes with conversion from quat to euler angles
+        # assert np.abs(np.dot(R.from_euler('xyz', xyz).as_quat(), r.as_quat()) - 1) < 0.00001
+        # z-axis is roll-angle (rotation around axis in driving direction)
         angle = xyz[2]
         gyroAcclGps[i, -2] = angle
 
