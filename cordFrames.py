@@ -21,7 +21,7 @@ class transform():
         return transform(self.trans + transform1.trans, (self.rot*transform1.rot).as_quat())
 
 '''
-world coordinate frame, origin at ground level of world-plane, contact point of front-wheel and road
+world coordinate frame, so far: origin at ground level of world-plane, contact point of front-wheel and road
 +X: left, +Y: Up, +Z driving direction
 '''
 
@@ -70,8 +70,9 @@ Get all coordinate frames intended for moped-ar with this function
 def get_cordFrames():
     world_frame = worldFrame()
 
-    # plane coordinate frame
-    # same as world
+    # front wheel coordinate frame
+    # moving coordinate frame, origin at touching point of front wheel and street
+    # so far: same as world
     fw_frame = cordFrame(data=None,
                             name='Front Wheel',
                             world_frame=world_frame,
@@ -88,7 +89,7 @@ def get_cordFrames():
     imu_frame = cordFrame(data=None,
                           name='IMU',
                           world_frame=world_frame,
-                          parent=world_frame,
+                          parent=fw_frame,
                           children=[],
                           transToParent=transform(np.array([0, -1.2137, 0], dtype=np.float64),
                                                   [[np.sin(np.pi/2), 0, 0, np.cos(np.pi/2)],

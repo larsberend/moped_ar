@@ -162,6 +162,6 @@ def bird_view(curve2d, trans_rot):
 
 
 if __name__ == '__main__':
-    world_frame, plane_frame, cam_frame, imu_frame = get_cordFrames()
+    world_frame, fw_frame, cam_frame, imu_frame = get_cordFrames()
     _, curve2d = draw_curve(-3000, cam_frame)
     # print(curve2d)

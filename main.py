@@ -49,29 +49,28 @@ def main():
             # rearrange to scalar-last format, cast to Euler to extract only Roll-Angle
             ori = [ori[1],ori[2],ori[3],ori[0]]
             ori_eul = R.from_quat(ori).as_euler('xyz',degrees=False)
-            ori_yz = R.from_euler('xyz',[0, 0, -ori_eul[2]],degrees=False).as_quat()
-
             # check, if Euler conversion returns same Quaternion
             # assert np.abs(np.dot(R.from_euler('xyz', ori_eul).as_quat(), ori) - 1) < 0.00001
 
-            # get position of IMU by calculating circular cord with height above world and rotation around rolling axis
 
-            #TODO 0 und 90 grad testen
-            pos_from_angle = np.array([[np.cos(ori_yz[2]), np.sin(ori_yz[2])],
-                                       [-np.sin(ori_yz[2]), np.cos(ori_yz[2])]])
-            new_pos = np.dot(np.array([0,-1.2137]), pos_from_angle)
+            ori_yz = R.from_euler('xyz',[0, 0, -ori_eul[2]],degrees=False)
+            # ckeck translation of camera with angle of 0 and 90
+            # ori_yz = R.from_euler('xyz',[0, 0, -np.pi/2],degrees=False)
+            # ori_yz = R.from_euler('xyz',[0, 0, 0],degrees=False)
+
+            pos_from_angle = ori_yz.apply([0, -1.1237, 0])
+            # print(pos_from_angle)
 
             # calc new transform of IMU to world
-            imu_trans = transform([new_pos[0], new_pos[1], 0], [
+            imu_trans = transform(pos_from_angle, [
                                                     [0, 0, np.sin(np.pi/4),np.cos(np.pi/4)],
                                                     [np.sin(np.pi/2), 0, 0, np.cos(np.pi/2)],
                                                     # [ori_yz[1], 0, 0, np.cos(np.arcsin(ori_yz[1]))]
-                                                    ori_yz
+                                                    ori_yz.as_quat()
                                                     # [0,np.sin(-np.pi/32),0,np.cos(-np.pi/32)]
                                                    ]
                                  )
             imu_frame.update_ori(imu_trans)
-
 
             cv.putText(frame, 'Frame Nr: %s'%(cap.get(0)), (1650,20), font, 0.5, (0, 255, 0), 2, cv.LINE_AA)
             cv.putText(frame, 'Radius: %s'%(radius), (1650,40), font, 0.5, (0, 255, 0), 2, cv.LINE_AA)
