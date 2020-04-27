@@ -25,39 +25,54 @@ pv = np.float64(0.0045/1080)
 # central coordinates of video
 u0 = 960
 v0 = 540
+factor = 100 # take 100 points per meter, show 1
 
 def draw_curve(radius, cam_frame):
-    # radius = 2000
+    # radius = 2
     # a radius with a radius of inf/-inf is a line. Here, threshold is 1000m for speed-up
     if np.abs(radius) > 1000:
-        curve2d = line(0,1,0,3000)
+        x, z = line(0,1,0,3000)
+
     else:
         # calculate circle perimeter in 2d (function gives tuple of arrays: ([x-cord0, x-cord1, ...], [z-cord0, zcord1,...]))
         # One point every 10 cm
-        a, b = np.array(circle_perimeter(np.int(radius*10), 0, np.abs(np.int(radius*10))))
 
+        # ----deprecated----
+        # a, b = np.array(circle_perimeter(np.int(radius*10), 0, np.abs(np.int(radius*10))))
+        # a2 = []# np.zeros((np.int(a.shape[0]/2)-1))
+        # b2 = []# np.zeros((np.int(a.shape[0]/2)-1))
+        #
+        # # eliminate points behind camera
+        # for x in range(a.shape[0]):
+        #     if b[x]>0:
+        #         # eliminate points that lie "far away"
+        #         # if np.linalg.norm(a[x]-b[x])<500:
+        #         a2.append(a[x])
+        #         b2.append(b[x])
+        # curve2d = (np.asarray(a2), np.asarray(b2))
+        # curve2d = (curve2d[0]/10, curve2d[1]/10)
+        # curve4d = (curve2d[0]/10, np.zeros(curve2d[0].shape, dtype=np.int64),curve2d[1]/10, np.ones(curve2d[0].shape, dtype=np.int64))
+        # curve4d = np.column_stack(curve4d).astype(np.float64)
+        #  ---deprecated----
 
-        a2 = []# np.zeros((np.int(a.shape[0]/2)-1))
-        b2 = []# np.zeros((np.int(a.shape[0]/2)-1))
-
-        # eliminate points behind camera
-        for x in range(a.shape[0]):
-            if b[x]>0:
-                # eliminate points that lie "far away"
-                # if np.linalg.norm(a[x]-b[x])<1000:
-                a2.append(a[x])
-                b2.append(b[x])
-        curve2d = (np.asarray(a2), np.asarray(b2))
     # print(curve2d)
 
+        x, z = np.array(circle_perimeter(np.int(radius*factor), 0, np.abs(np.int(radius*factor))), dtype=np.float64)
     # extend to 4d (homogeneous) with y = 0, w = 1
-    curve2d = (curve2d[0]/10, curve2d[1]/10)
-    curve4d = (curve2d[0]/10, np.zeros(curve2d[0].shape, dtype=np.int64),curve2d[1]/10, np.ones(curve2d[0].shape, dtype=np.int64))
-    curve4d = np.column_stack(curve4d).astype(np.float64)
+    curve4d = np.column_stack((x/factor, np.zeros(x.shape), z/factor, np.ones(x.shape))).astype(np.float64)
+    curve4d = curve4d[curve4d[:,2] > 0]
+    # curve4d = curve4d[np.abs(curve4d[:,2]) < 50]
+    # print(curve4d.shape)
+    curve4d = curve4d[np.abs(curve4d[:,0]).argsort()]
+    step_increase = np.array([x*2 for x in range(np.int(curve4d.shape[0]/2)-1) ])
+    curve4d = curve4d[::factor]
+    # print(curve4d.shape)
 
     # now: array of 4-dim array: [[x0, 0, z0, 1], [x1, 0, z1, 1], ...]
 
-    # print(curve4d)
+    # print(curve4d[:5])
+    # quit()
+
 
     # camera rotation inverse (from parent(world) to camera), homogeneous
     cam_rot = cam_frame.transToWorld.rot.inv().as_matrix()
@@ -90,8 +105,8 @@ def draw_curve(radius, cam_frame):
 
     # print(K)
     # print(C)
-
-    curve_proj = np.column_stack(np.zeros_like(curve2d)).astype(np.float64)
+    # print(curve4d.shape[0])
+    curve_proj = np.zeros((curve4d.shape[0],2),dtype=np.float64)
 
     # multiply every point of curve with camera matrix, divide by last digit to bring to 2D
     for i in range(curve4d.shape[0]):
@@ -118,7 +133,7 @@ def draw_curve(radius, cam_frame):
     # print(np.mean(curve_proj[1, :]))
 
     # print(curve_proj)
-    return curve_proj, bird_view(curve2d, trans_rot)
+    return curve_proj, bird_view((x/factor,z/factor), trans_rot)
 
 # plot curve without camera perspective (from above, looking at world frame origin)
 # also vector describing camera-z-axis (to back of motorcycle)
@@ -147,6 +162,6 @@ def bird_view(curve2d, trans_rot):
 
 
 if __name__ == '__main__':
-    world_frame, plane_frame, cam_frame = get_cordFrames()
-    _, curve2d = draw_curve(-20, cam_frame)
+    world_frame, plane_frame, cam_frame, imu_frame = get_cordFrames()
+    _, curve2d = draw_curve(-3000, cam_frame)
     # print(curve2d)

@@ -72,8 +72,8 @@ def get_cordFrames():
 
     # plane coordinate frame
     # same as world
-    plane_frame = cordFrame(data=None,
-                            name='plane',
+    fw_frame = cordFrame(data=None,
+                            name='Front Wheel',
                             world_frame=world_frame,
                             parent=world_frame,
                             children=[],
@@ -115,4 +115,4 @@ def get_cordFrames():
     # print(imu_frame)
     # print(cam_frame)
 
-    return world_frame, plane_frame, cam_frame, imu_frame
+    return world_frame, fw_frame, cam_frame, imu_frame
