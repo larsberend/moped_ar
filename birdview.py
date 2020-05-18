@@ -48,8 +48,8 @@ def birdview():
         slope_r = linregress(r_cand[0], r_cand[1])[0]
 
     print('out of while')
-    src = np.float32([[889, 577], [515, 902], [1018, 570], [1566, 1079]])
-    dst = np.float32([[515, 577], [515, 902], [1566, 570], [1566, 1079]])
+    src = np.float32([[889, 577, 1], [515, 902, 1], [1018, 570, 1], [1566, 1079, 1]])
+    dst = np.float32([[515, 577, 1], [515, 902, 1], [1566, 570, 1], [1566, 1079, 1]])
     # left = (np.array([0, 10,20,30]), np.array([0, 10,20,30]))
     # left = np.column_stack((left[0], left[1]))
     # l_cand = np.column_stack((l_cand[0], l_cand[1]))
@@ -61,10 +61,26 @@ def birdview():
     K  = np.identity(3)
     retval, rotations, translations, normals = cv.decomposeHomographyMat(homo, K)
 
-    H = get_homography(np.linalg.inv(rotations[0]), -translations[0], -normals[0])
+    H = get_homography(rotations[0], translations[0], normals[0])
     # print((rotations[0], translations[0], normals[0]))
-    print(-H)
+    H = H / H[2,2]
+    print(H)
     print(homo)
+    dst2 = np.zeros_like(src)
+    for i in range(dst2.shape[0]):
+        coords = np.dot(H, src[i])
+        dst2[i] = coords / coords[2]
+
+    print(dst2)
+    print(dst)
+    # dst2 = [x for x in src]
+    # print(dst2.shape)
+    # print(dst2[:,2].shape)
+    M = cv.getPerspectiveTransform(src[:,:2].astype(np.float32), dst[:,:2].astype(np.float32)) # The transformation matrix
+    print(M)
+    # quit()
+    warped_img = cv.warpPerspective(img, homo, (IMAGE_W, IMAGE_H)) # Image warping
+    # cv.imwrite('./00-08-52-932_warp_lines_test.png', warped_img)
     # print(K)
     # print(np.linalg.inv(homo))
     # print(homo.T)
@@ -76,6 +92,7 @@ def get_warp_pos(left, middle, right):
     m_cand = [[1, 2], [1,2]]
     r_cand = [[2, 3], [2,3]]
     return l_cand, m_cand, r_cand
+
 def get_homography(rot, t, n):
     # n = np.array([1,0,0])
     # t = np.array([1,0,1])
@@ -103,7 +120,6 @@ def get_homography(rot, t, n):
 #
 # # src = np.float32([[0, 1080], [1920, 1080], [0, IMAGE_H], [IMAGE_W, IMAGE_H]])
 # # dst = np.float32([[780, IMAGE_H], [1020, IMAGE_H], [0, 0], [IMAGE_W, 0]])
-# M = cv.getPerspectiveTransform(src, dst) # The transformation matrix
 # Minv = cv.getPerspectiveTransform(dst, src) # Inverse transformation
 # homo, _ = cv.findHomography(src,dst)
 # retval, rotations, translations, normals = cv.decomposeHomographyMat(homo, K)
