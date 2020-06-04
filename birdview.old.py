@@ -98,7 +98,7 @@ def birdview():
     # for x in np.arange(0, np.pi, 0.000001):
     cnt = 0
     for x in np.arange(0, np.pi, 0.0001):
-        H = get_homography(rot = R.from_euler('xyz', (np.pi/2, 0, 0)).as_matrix(),
+        H = get_homography(rot = R.from_euler('xyz', (x, 0, 0)).as_matrix(),
                        t = np.array([0, 0, 0]),
                        n = np.array([0, 0, 1])
                        )
