@@ -12,32 +12,38 @@ IMAGE_W = 1920
 
 font = cv.FONT_HERSHEY_SIMPLEX
 # matrices for camera intrinsics
-pixel_mat = np.array([[1/pu,0,u0], [0,1/pv,v0],[0,0,1]], dtype=np.float64)
-focal_mat = np.array([[f,0,0],[0,f,0], [0,0,1]], dtype=np.float64)
 
-K = np.dot(pixel_mat, focal_mat)
 
 def birdview():
+    focal_mat = np.array([[f,0,0],[0,f,0], [0,0,1]], dtype=np.float64)
+    pixel_mat = np.array([[1/pu,0,u0], [0,1/pv,v0],[0,0,1]], dtype=np.float64)
+    K = np.dot(pixel_mat, focal_mat)
     img = cv.imread('./00-08-52-932_points_cut.png') # Read the test img
 
     cnt = 0
-    for p in np.arange(0.000, np.pi, 0.0001):
+    for p in np.arange(0.000, np.pi, 0.1):
+        # for o in np.arange(0.9, 1, 0.1):
         print(p)
-        H = get_homography(rot = R.from_euler('xyz', (0, p, 0), degrees=False).as_matrix(),
-                       t = np.array([0, 0, 0]),
-                       n = np.array([0, 1, 0])
-                       )
+        rot = R.from_euler('xyz', (0, p, 0), degrees=False).as_matrix()
+        # H = get_homography(rot = rot,
+        #                t = np.array([0, 0, 0]),
+        #                n = np.array([0, 1, 0])
+        #                )
 
-        # small_img = cv.resize(img, (np.int32(img.shape[1]/2), np.int32(img.shape[0]/2)))
-        # warped_img = my_warp3(small_img, H)
+        H = get_homography2(rot, K)
+        print(H)
+
+        # small_img = cv.resize(img, (np.int32(img.shape[1]/3), np.int32(img.shape[0]/3)))
+
+        # warped_img = new_warp(small_img, H)
+
         warped_img = my_warp3(img, H)
-        # warped_img2 = my_warp2(small_img, H)
-        # warped_img = cv.rotate(warped_img, cv.ROTATE_90_COUNTERCLOCKWISE)
-        # warped_img = cv.warpPerspective(img, H, (1920, 1080), (cv.INTER_LINEAR, cv.WARP_INVERSE_MAP)) # Image warping
+
+        # warped_img = my_warp3(img, H)
         # warped_img = cv.resize(warped_img, (1920, 1080))
-        # cv.imshow('warp', warped_img)
-        # cv.putText(warped_img, 'x = %s'%(x), (50,20), font, 0.5, (0, 255, 0), 20, cv.LINE_AA)
-        cv.imwrite('./my_warp/%s-3.png'%(cnt), warped_img)
+
+        # warped_img = cv.resize(warped_img, (np.int32(img.shape[1]/5), np.int32(img.shape[0]/5)))
+        cv.imwrite('./my_warp/%s.png'%(cnt), warped_img)
         # cv.imwrite('./my_warp/%s-2.png'%(cnt), warped_img2)
         '''
         # left = np.where(np.all(warped_img == [0,0,255], axis=-1))
@@ -71,12 +77,13 @@ def birdview():
     # print(np.linalg.inv(homo))
     # print(homo.T)
 
-    quit()
+    # quit()
+
 
 def my_warp3(src, H):
     # height, width = 1000, 1000
-    # width, height = 1000, 10000
-    height, width = src.shape[:2]
+    width, height = 10000, 10000
+    # height, width = src.shape[:2]
     dst_points = np.zeros((height, width, 3), dtype=np.float64)
     # print(H)
 
@@ -96,6 +103,7 @@ def my_warp3(src, H):
     # print(a_vec.shape)
     # print(b_vec.shape)
 
+    # H = np.linalg.inv(H)
 
     a_vec = np.float32((H[0,0]*X + H[0,1]*Y + H[0,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]) + src.shape[0]/2)
     b_vec = np.float32((H[1,0]*X + H[1,1]*Y + H[1,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]) + src.shape[1]/2)
@@ -120,7 +128,15 @@ def my_warp_lanes(srcY, srcX, width, height, H):
             # if np.abs(a) < height/2 and np.abs(b) < width/2:
         dst_points[np.int32(x+height/2),np.int32(y+width/2)] = src[np.int32(a),np.int32(b)]
     return dst_points
-
+    # from Gerhard Roth
+def get_homography2(rot, K):
+    print(rot)
+    KR = np.dot(K, rot)
+    print(KR)
+    KRK = np.dot(KR, np.linalg.inv(K))
+    print(KRK)
+    print('end of homography2')
+    return KRK
 
 def get_homography(rot, t, n):
     # print('here')
