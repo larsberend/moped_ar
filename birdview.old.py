@@ -111,14 +111,14 @@ def birdview():
         small_img = cv.resize(img, (np.int32(img.shape[1]/2), np.int32(img.shape[0]/2)))
         # warped_img = my_warp_vec(small_img, H)
         warped_img = my_warp3(small_img, H)
-        warped_img2 = my_warp2(small_img, H)
+        # warped_img2 = my_warp2(small_img, H)
         # warped_img = cv.rotate(warped_img, cv.ROTATE_90_COUNTERCLOCKWISE)
         # warped_img = cv.warpPerspective(img, H, (1920, 1080), (cv.INTER_LINEAR, cv.WARP_INVERSE_MAP)) # Image warping
         # warped_img = cv.resize(warped_img, (1920, 1080))
         # cv.imshow('warp', warped_img)
         # cv.putText(warped_img, 'x = %s'%(x), (50,20), font, 0.5, (0, 255, 0), 20, cv.LINE_AA)
-        cv.imwrite('./my_warp/%s.png'%(cnt), warped_img)
-        cv.imwrite('./my_warp/%s-2.png'%(cnt), warped_img2)
+        cv.imwrite('./my_warp/%s-3.png'%(cnt), warped_img)
+        # cv.imwrite('./my_warp/%s-2.png'%(cnt), warped_img2)
         '''
         # left = np.where(np.all(warped_img == [0,0,255], axis=-1))
         middle = np.where(np.all(warped_img == [0,255,0], axis=-1))
@@ -198,12 +198,40 @@ def my_warp3(src, H):
     # print((H[0,2], H[1,2], H[2,2]))
     # quit()
     cnt_tru=0
+
+    x_vec = np.arange(-height/2, height/2)
+    y_vec = np.arange(-width/2, width/2)
+
+    Y, X = np.meshgrid(y_vec, x_vec)
+
+    # print(X.shape)
+    # print(Y.shape)
+
     a_vec = np.zeros((height, width))
     b_vec = np.zeros((height, width))
+
+    # print(a_vec.shape)
+    # print(b_vec.shape)
+
     # for x in np.arange(height):
     #     for y in np.arange(width):
 
+    a_vec = np.float32((H[0,0]*X + H[0,1]*Y + H[0,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]) + src.shape[0]/2)
+    b_vec = np.float32((H[1,0]*X + H[1,1]*Y + H[1,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]) + src.shape[1]/2)
 
+    dst_points = cv.remap(src, b_vec, a_vec, 0)
+    # print(dst_points.shape)
+    # quit()
+    return dst_points
+
+
+
+
+
+    '''
+
+    a_vec = np.zeros((height, width))
+    b_vec = np.zeros((height, width))
 
     for x in np.arange(-height/2, height/2):
         for y in np.arange(-width/2, width/2):
@@ -237,9 +265,14 @@ def my_warp3(src, H):
                 # dst_points[np.int64(x+height/2),np.int64(y+width/2)] = src[np.int64(a),np.int64(b)]
                 # dst_points[10,10] = [255,255,0]
         # print(y)
+    print(dst_points.shape)
+    print(a_vec.shape)
+    print(b_vec.shape)
+
+    quit()
     return dst_points
 
-
+    '''
 
 
 def my_warp_vec(src, H):
