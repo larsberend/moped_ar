@@ -22,10 +22,11 @@ def birdview():
     img = cv.imread('./00-08-52-932_points_cut.png') # Read the test img
 
     cnt = 0
-    for p in np.arange(0.0, np.pi, 0.1):
+    for p in np.arange(0, np.pi, 0.1):
         # for o in np.arange(0.9, 1, 0.1):
         print(p)
-        rot = R.from_euler('xyz', (0, 0.6, 0), degrees=False).as_matrix()
+        rot = R.from_euler('xyz', (0, p, 0), degrees=False).as_matrix()
+        # rot = R.from_euler('xyz', (0, 0.82, 0), degrees=False).as_matrix()
         # H = get_homography(rot = rot,
         #                t = np.array([0, 0, 0]),
         #                n = np.array([0, 1, 0])
@@ -34,7 +35,7 @@ def birdview():
         H = get_homography2(rot, K)
         print(H)
 
-        small_img = cv.resize(img, (np.int32(img.shape[1]/3), np.int32(img.shape[0]/3)))
+        # small_img = cv.resize(img, (np.int32(img.shape[1]/3), np.int32(img.shape[0]/3)))
 
         # warped_img = new_warp(small_img, H)
 
@@ -47,7 +48,7 @@ def birdview():
         # warped_img = cv.resize(warped_img, (np.int32(img.shape[1]/5), np.int32(img.shape[0]/5)))
 
         warped_img = my_warp4(img, H)
-        warped_img = maximum_filter(warped_img, footprint=np.ones((5, 3, 3)))
+        # warped_img = maximum_filter(warped_img, footprint=np.ones((5, 3, 3)))
         cv.imwrite('./my_warp/%s-3.png'%(cnt), warped_img)
         '''
         # left = np.where(np.all(warped_img == [0,0,255], axis=-1))
@@ -83,7 +84,7 @@ def birdview():
 
     # quit()
 
-
+'''
 def my_warp3(src, H):
     # height, width = 1000, 1000
     width, height = 5000, 5000
@@ -121,22 +122,38 @@ def my_warp3(src, H):
     cv.imwrite('./my_warp/cv.png', dst)
 
     return dst_points
-
+'''
 def my_warp4(src, H):
     # height, width = 1000, 1000
     # width, height = 1000, 1000
+    dst_height, dst_width = 1080,1920
     height, width = src.shape[:2]
     # dst_points = np.zeros((height, width, 3), dtype=np.float64)
 
+    xstart = 0
+    xend = xstart + height
 
+    ystart = -width/4
+    yend = ystart + width
 
-    x_vec = np.arange(-height/2, height/2)
-    y_vec = np.arange(-width/2, width/2)
+    x_vec = np.arange(xstart, xend)
+    y_vec = np.arange(ystart, yend)
+
+    print((xend,yend))
+    # x_vec = np.arange(height)
+    # y_vec = np.arange(width)
+
+    # y_vec = np.arange(-width/4, 3*width/4)
+    # y_vec = np.arange(-width,0)
+    # x_vec = np.arange(-height,0)
+
+    # x_vec = np.arange(-height/2, height/2)
+    # y_vec = np.arange(-width/2, width/2)
 
     Y, X = np.meshgrid(y_vec, x_vec)
 
-    # print(X.shape)
-    # print(Y.shape)
+    print(X.shape)
+    print(Y.shape)
 
     # a_vec = np.zeros((height, width))
     # b_vec = np.zeros((height, width))
@@ -146,26 +163,26 @@ def my_warp4(src, H):
 
     H = np.linalg.inv(H)
     print(H)
-    a_vec = np.float32((H[0,0]*X + H[0,1]*Y + H[0,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]) + src.shape[0]/2)
-    b_vec = np.float32((H[1,0]*X + H[1,1]*Y + H[1,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]) + src.shape[1]/2)
+    a_vec = np.float32((H[0,0]*X + H[0,1]*Y + H[0,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]))# + height/2)
+    b_vec = np.float32((H[1,0]*X + H[1,1]*Y + H[1,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]))# + width/2)
 
     # a_vec -= np.amin(a_vec)
     # b_vec -= np.amin(b_vec)
     amin = np.amin(a_vec)
     bmin = np.amin(b_vec)
-    if amin < 0:
-        a_vec -= amin
-        amin = np.amin(a_vec)
-    if bmin < 0:
-        b_vec -= bmin
-        bmin = np.amin(b_vec)
+    # if amin < 0:
+    #     a_vec -= amin
+    #     amin = np.amin(a_vec)
+    # if bmin < 0:
+    #     b_vec -= bmin
+    #     bmin = np.amin(b_vec)
 
 
     print((np.amin(a_vec), np.amax(a_vec)))
     print((np.amin(b_vec), np.amax(b_vec)))
 
-    # a_vec = ((a_vec - np.amin(a_vec)) / (np.amax(a_vec)-np.amin(a_vec))) * 1000
-    # b_vec = ((b_vec - np.amin(b_vec)) / (np.amax(b_vec)-np.amin(b_vec))) * 1000
+    a_vec = ((a_vec - np.amin(a_vec)) / (np.amax(a_vec)-np.amin(a_vec))) * dst_height
+    b_vec = ((b_vec - np.amin(b_vec)) / (np.amax(b_vec)-np.amin(b_vec))) * dst_width
     # a_vec = ((a_vec - np.amin(a_vec)) / (np.amax(a_vec)-np.amin(a_vec))) * src.shape[0]
     # b_vec = ((b_vec - np.amin(b_vec)) / (np.amax(b_vec)-np.amin(b_vec))) * src.shape[1]
     print(a_vec.shape)
@@ -180,8 +197,8 @@ def my_warp4(src, H):
 
 
 
-    dst_points = np.zeros((np.int32((np.amax(a_vec)+1, np.amax(b_vec)+1, 3))))
-    pos = np.stack((a_vec, b_vec), 2).astype(np.int32)
+    dst_points = np.zeros((np.int32((np.amax(a_vec)+1, np.amax(b_vec)+1, 3))), dtype=np.uint8)
+    pos = np.stack((a_vec, b_vec), 2).astype(np.uint32)
     # print(np.arange(dst_points.shape[1]))
     # print(pos[:,:,0].shape)
 
