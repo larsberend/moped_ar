@@ -19,21 +19,22 @@ def birdview():
     focal_mat = np.array([[f,0,0],[0,f,0], [0,0,1]], dtype=np.float64)
     pixel_mat = np.array([[1/pu,0,u0], [0,1/pv,v0],[0,0,1]], dtype=np.float64)
     K = np.dot(pixel_mat, focal_mat)
-    img = cv.imread('./00-08-52-932_points_cut.png') # Read the test img
-
+    img = cv.imread('./00-08-52-932_points.png') # Read the test img
+    # img = np.rot90(img)
+    # cv.imwrite('malwiedertest.png',img)
     cnt = 0
-    for p in np.arange(0, np.pi, 0.1):
+    for p in np.arange(np.pi-0.01, np.pi, 0.1):
         # for o in np.arange(0.9, 1, 0.1):
-        print(p)
-        rot = R.from_euler('xyz', (0, p, 0), degrees=False).as_matrix()
-        # rot = R.from_euler('xyz', (0, 0.82, 0), degrees=False).as_matrix()
+        # print(p)
+        # rot = R.from_euler('xyz', (0, p, 0), degrees=False).as_matrix()
+        rot = R.from_euler('xyz', (0, 0.69, 0), degrees=False).as_matrix()
         # H = get_homography(rot = rot,
         #                t = np.array([0, 0, 0]),
         #                n = np.array([0, 1, 0])
         #                )
 
         H = get_homography2(rot, K)
-        print(H)
+        # print(H)
 
         # small_img = cv.resize(img, (np.int32(img.shape[1]/3), np.int32(img.shape[0]/3)))
 
@@ -47,29 +48,73 @@ def birdview():
         # warped_img = cv.resize(warped_img, (1920, 1080))
         # warped_img = cv.resize(warped_img, (np.int32(img.shape[1]/5), np.int32(img.shape[0]/5)))
 
+        middle = np.where(np.all(img == [0,255,0], axis=-1))
+        right = np.where(np.all(img == [255,0,0], axis=-1))
+        new_height = np.amin([min(middle[0]),min(right[0])])
+        new_width = np.amax([max(middle[1]),max(right[1])])
+
+        img = img[new_height:, 0:new_width+1]
+        # middle = np.where(np.all(img == [0,255,0], axis=-1))
+        # right = np.where(np.all(img == [255,0,0], axis=-1))
+        # print(img.shape)
+        # quit()
+        # print(middle)
+
         warped_img = my_warp4(img, H)
         # warped_img = maximum_filter(warped_img, footprint=np.ones((5, 3, 3)))
-        cv.imwrite('./my_warp/%s-3.png'%(cnt), warped_img)
-        '''
+        # cv.imwrite('./my_warp/%s-2.png'%(cnt), warped_img)
+
         # left = np.where(np.all(warped_img == [0,0,255], axis=-1))
-        middle = np.where(np.all(warped_img == [0,255,0], axis=-1))
-        right = np.where(np.all(warped_img == [255,0,0], axis=-1))
+        # quit()
+
+        middle_warp = np.where(np.all(warped_img == [0,255,0], axis=-1))
+        # print(middle_warp)
+        right_warp = np.where(np.all(warped_img == [255,0,0], axis=-1))
+        slope_m, intercept_m = linregress(middle_warp[0], middle_warp[1])[:2]
+        slope_r, intercept_r = linregress(right_warp[0], right_warp[1])[:2]
+        # print(middle_warp)
+        # print(right_warp)
+        print((slope_r, slope_m))
+
+        warped_img = cv.line(warped_img, pt1=(np.int32(intercept_m), 0), pt2=(np.int32(slope_m*warped_img.shape[0] + intercept_m), warped_img.shape[0]), color=(0,255,0))
+        warped_img = cv.line(warped_img, pt1=(np.int32(intercept_r), 0), pt2=(np.int32(slope_r*warped_img.shape[0] + intercept_r), warped_img.shape[0]), color=(255,0,0))
+
+        middle = np.where(np.all(img == [0,255,0], axis=-1))
+        # print(middle)
+        right = np.where(np.all(img == [255,0,0], axis=-1))
+        middle_warp = point_warp(middle, H, img)
+        # print(middle_warp)
+        # quit()
+        right_warp = point_warp(right, H, img)
         # slope_l = linregress(left[0], left[1])[0]
-        slope_m = linregress(middle[0], middle[1])[0]
-        slope_r = linregress(right[0], right[1])[0]
+        # pass x as y values and vice versa to avoid infinite slope
+        slope_m, intercept_m = linregress(middle_warp[0], middle_warp[1])[:2]
+        slope_r, intercept_r = linregress(right_warp[0], right_warp[1])[:2]
+
+        # print(((np.int32(intercept_m), 0), (np.int32(slope_m*warped_img.shape[0] + intercept_m), warped_img.shape[0])))
+        # print(((np.int32(intercept_r), 0), (np.int32(slope_r*warped_img.shape[0] + intercept_r), warped_img.shape[0])))
+        # warped_img = cv.line(warped_img, pt1=(np.int32(intercept_m), 0), pt2=(np.int32(slope_m*warped_img.shape[0] + intercept_m), warped_img.shape[0]), color=(0,255,0))
+        # warped_img = cv.line(warped_img, pt1=(np.int32(intercept_r), 0), pt2=(np.int32(slope_r*warped_img.shape[0] + intercept_r), warped_img.shape[0]), color=(255,0,0))
+
+        cv.imwrite('./my_warp/%s-2.png'%(cnt), warped_img)
+        print((slope_r, slope_m))
+
 
         tol = 1e-02
         if np.isclose(slope_r, slope_m, tol, equal_nan=False):
             print('ja nice!')
             print((slope_r,slope_m))
-            print(x)
-            cv.imwrite('./parallel.png'%(cnt), warped_img)
+            # print(x)
+            warped_img = my_warp4(img,H)
+
+            # print(np.unique(warped_img, return_counts=True))
+            warped_img = maximum_filter(warped_img, footprint=np.ones((20, 20, 3)))
+            cv.imwrite('./parallel.png', warped_img)
 
             quit()
             # slope_l, slope_m, slope_r = 1,1,1
             # print((slope_l,slope_m,slope_r))
 
-        print((slope_r, slope_m))
         '''
         cnt += 1
         if cv.waitKey(1) & 0xFF == ord('q'):
@@ -85,61 +130,63 @@ def birdview():
     # quit()
 
 '''
-def my_warp3(src, H):
-    # height, width = 1000, 1000
-    width, height = 5000, 5000
-    # height, width = src.shape[:2]
-    dst_points = np.zeros((height, width, 3), dtype=np.float64)
-    # print(H)
+def point_warp(points, H, img):
+    # X = np.array([0, points[0], img.shape[0]])
+    # print(X)
+    # quit()
+    X, Y = np.float64(points)
 
-    cnt_tru=0
+    xmin, ymin = -img.shape[0]/2, -img.shape[1]/2
+    xmax, ymax = xmin + img.shape[0], ymin + img.shape[1]
 
-    x_vec = np.arange(-height/2, height/2)
-    y_vec = np.arange(-width/2, width/2)
+    X += xmin
+    Y += ymin
 
-    Y, X = np.meshgrid(y_vec, x_vec)
+    # to visualize: insert min/max to fit to image
+    X = np.append(X, [xmin, xmax])
+    Y = np.append(Y, [ymin, ymax])
 
     # print(X.shape)
     # print(Y.shape)
+    # print((X,Y))
+    # Y -= np.int64(1920/4)
+    H = np.linalg.inv(H)
 
-    a_vec = np.zeros((height, width))
-    b_vec = np.zeros((height, width))
+    a_vec = np.float64((H[0,0]*X + H[0,1]*Y + H[0,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]))
+    b_vec = np.float64((H[1,0]*X + H[1,1]*Y + H[1,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]))
 
-    # print(a_vec.shape)
-    # print(b_vec.shape)
+    # normalize to image
+    a_vec = ((a_vec - np.amin(a_vec)) / (np.amax(a_vec)-np.amin(a_vec))) * 1920
+    b_vec = ((b_vec - np.amin(b_vec)) / (np.amax(b_vec)-np.amin(b_vec))) * 1080
 
-    # H = np.linalg.inv(H)
+    # print(X)
+    # print(a_vec[:-2])
+    # quit()
+    warped_points = a_vec[:-2], b_vec[:-2]
 
-    a_vec = np.float32((H[0,0]*X + H[0,1]*Y + H[0,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]) + src.shape[0]/2)
-    b_vec = np.float32((H[1,0]*X + H[1,1]*Y + H[1,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]) + src.shape[1]/2)
+
+    return warped_points
 
 
 
-    dst_points = cv.remap(src, b_vec, a_vec, 0)
-    # print(dst_points.shape)
-
-    dst = cv.warpPerspective(src, H, (5000, 5000), flags=cv.WARP_INVERSE_MAP)
-    cv.imwrite('./my_warp/cv.png', dst)
-
-    return dst_points
-'''
 def my_warp4(src, H):
     # height, width = 1000, 1000
     # width, height = 1000, 1000
-    dst_height, dst_width = 1080,1920
+    dst_height, dst_width = 1920, 1080
     height, width = src.shape[:2]
     # dst_points = np.zeros((height, width, 3), dtype=np.float64)
+    # print((height,width))
 
-    xstart = 0
+    xstart = -height/2
     xend = xstart + height
 
-    ystart = -width/4
+    ystart = -width/2
     yend = ystart + width
 
     x_vec = np.arange(xstart, xend)
     y_vec = np.arange(ystart, yend)
 
-    print((xend,yend))
+    # print((xend,yend))
     # x_vec = np.arange(height)
     # y_vec = np.arange(width)
 
@@ -152,8 +199,8 @@ def my_warp4(src, H):
 
     Y, X = np.meshgrid(y_vec, x_vec)
 
-    print(X.shape)
-    print(Y.shape)
+    # print(X.shape)
+    # print(Y.shape)
 
     # a_vec = np.zeros((height, width))
     # b_vec = np.zeros((height, width))
@@ -162,7 +209,7 @@ def my_warp4(src, H):
     # print(b_vec.shape)
 
     H = np.linalg.inv(H)
-    print(H)
+    # print(H)
     a_vec = np.float32((H[0,0]*X + H[0,1]*Y + H[0,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]))# + height/2)
     b_vec = np.float32((H[1,0]*X + H[1,1]*Y + H[1,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]))# + width/2)
 
@@ -178,17 +225,17 @@ def my_warp4(src, H):
     #     bmin = np.amin(b_vec)
 
 
-    print((np.amin(a_vec), np.amax(a_vec)))
-    print((np.amin(b_vec), np.amax(b_vec)))
+    # print((np.amin(a_vec), np.amax(a_vec)))
+    # print((np.amin(b_vec), np.amax(b_vec)))
 
     a_vec = ((a_vec - np.amin(a_vec)) / (np.amax(a_vec)-np.amin(a_vec))) * dst_height
     b_vec = ((b_vec - np.amin(b_vec)) / (np.amax(b_vec)-np.amin(b_vec))) * dst_width
     # a_vec = ((a_vec - np.amin(a_vec)) / (np.amax(a_vec)-np.amin(a_vec))) * src.shape[0]
     # b_vec = ((b_vec - np.amin(b_vec)) / (np.amax(b_vec)-np.amin(b_vec))) * src.shape[1]
-    print(a_vec.shape)
-    print(b_vec.shape)
-    print(np.amin(a_vec), np.amax(a_vec))
-    print(np.amin(b_vec), np.amax(b_vec))
+    # print(a_vec.shape)
+    # print(b_vec.shape)
+    # print(np.amin(a_vec), np.amax(a_vec))
+    # print(np.amin(b_vec), np.amax(b_vec))
     #
     # a_vec = cv.resize(a_vec,(1000,1000))
     # b_vec = cv.resize(b_vec,(1000,1000))
@@ -204,12 +251,12 @@ def my_warp4(src, H):
 
     # print(np.amax(pos[:,:,1]))
     # quit()
-    print(pos.shape)
-    print(dst_points.shape)
-    print(src.shape)
-
-    print(np.amax(pos[:,:,0]))
-    print(np.amax(pos[:,:,1]))
+    # print(pos.shape)
+    # print(dst_points.shape)
+    # print(src.shape)
+    #
+    # print(np.amax(pos[:,:,0]))
+    # print(np.amax(pos[:,:,1]))
 
     for i in np.arange(pos.shape[0]):
         for k in np.arange(pos.shape[1]):
