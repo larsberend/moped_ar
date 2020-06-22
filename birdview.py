@@ -4,146 +4,210 @@ import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
 from scipy.cluster.vq import kmeans,vq,whiten
 from scipy.stats import linregress
+from scipy.ndimage import maximum_filter
 from draw_curve import pu,pv,u0,v0,f
 from skimage.draw import line
 
 IMAGE_H = 562
 IMAGE_W = 1920
 
-# matrices for camera intrinsics
-pixel_mat = np.array([[1/pu,0,u0], [0,1/pv,v0],[0,0,1]], dtype=np.float64)
-focal_mat = np.array([[f,0,0],[0,f,0], [0,0,1]], dtype=np.float64)
+font = cv.FONT_HERSHEY_SIMPLEX
 
-K = np.dot(pixel_mat, focal_mat)
 
-def birdview():
-    img = cv.imread('./00-08-52-932_lines2.png') # Read the test img
+def birdview(img, view):
+    focal_mat = np.array([[f,0,0],[0,f,0], [0,0,1]], dtype=np.float64)
+    pixel_mat = np.array([[1/pu,0,u0], [0,1/pv,v0],[0,0,1]], dtype=np.float64)
+    K = np.dot(pixel_mat, focal_mat)
 
-    left = np.where(np.all(img == [0,0,255], axis=-1))
-    middle = np.where(np.all(img == [0,255,0], axis=-1))
-    right = np.where(np.all(img == [255,0,0], axis=-1))
+    cnt = 0
+    for p in np.arange(0.1, np.pi, 0.1):
+        # print(p)
+        rot = R.from_euler('xyz', (0, p, 0), degrees=False).as_matrix()
 
-    # left = np.column_stack((left[0], left[1]))#.astype(np.float64)
-    # middle = np.column_stack((middle[0], middle[1]))#.astype(np.float64)
-    # right = np.column_stack((right[0], right[1]))#.astype(np.float64)
+        H = get_homography2(rot, K)
+        # print(H)
 
-    inter_l = linregress(left[1], left[0])
-    inter_m = linregress(middle[1], middle[0])
-    inter_r = linregress(right[1], right[0])
+        # small_img = cv.resize(img, (np.int32(img.shape[1]/3), np.int32(img.shape[0]/3)))
 
-    test_reg = linregress([0,1], [1,2])
-    print(inter_l)
-    print(test_reg)
+        middle = np.where(np.all(img == [0,255,0], axis=-1))
+        right = np.where(np.all(img == [255,0,0], axis=-1))
+        # left = np.where(np.all(warped_img == [0,0,255], axis=-1))
 
-    tol = 1e-08
-    slope_l, slope_m, slope_r = 1,2,3
-    while not(np.isclose(slope_l, slope_m, tol, equal_nan=False)) or not(np.isclose(slope_l, slope_r, tol, equal_nan=False)):
-        # print((slope_l,slope_m,slope_r))
-        # slope_l, slope_m, slope_r = 1,1,1
-        # print((slope_l,slope_m,slope_r))
+        new_height = np.amin([min(middle[0]),min(right[0])])
+        new_width = np.amax([max(middle[1]),max(right[1])])
 
-        l_cand, m_cand, r_cand  = get_warp_pos(left, middle, right)#(irgenwie bekomm ich hier kandidaten fuer punkte, die die birdview linien zeigen)
-        slope_l = linregress(l_cand[0], l_cand[1])[0]
-        slope_m = linregress(m_cand[0], m_cand[1])[0]
-        slope_r = linregress(r_cand[0], r_cand[1])[0]
 
-    print('out of while')
-    src = np.float32([[889, 577, 1], [515, 902, 1], [1018, 570, 1], [1566, 1079, 1]])
-    dst = np.float32([[515, 577, 1], [515, 902, 1], [1566, 570, 1], [1566, 1079, 1]])
-    # left = (np.array([0, 10,20,30]), np.array([0, 10,20,30]))
-    # left = np.column_stack((left[0], left[1]))
-    # l_cand = np.column_stack((l_cand[0], l_cand[1]))
-    # print(left)
-    # print(l_cand)
-    homo, _ = cv.findHomography(src, dst)
-    # homo, _ = cv.findHomography([left,middle,right], [l_cand, m_cand, r_cand])
+        if view:
+            img = img[new_height:, 0:new_width+1]
+            warped_img = warp_img(img, H)
+            middle_warp = np.where(np.all(warped_img == [0,255,0], axis=-1))
+            right_warp = np.where(np.all(warped_img == [255,0,0], axis=-1))
+            # pass x as y values and vice versa to avoid infinite slope
+            slope_m, intercept_m = linregress(middle_warp[0], middle_warp[1])[:2]
+            slope_r, intercept_r = linregress(right_warp[0], right_warp[1])[:2]
+            warped_img = cv.line(warped_img, pt1=(np.int32(intercept_m), 0), pt2=(np.int32(slope_m*warped_img.shape[0] + intercept_m), warped_img.shape[0]), color=(0,255,0))
+            warped_img = cv.line(warped_img, pt1=(np.int32(intercept_r), 0), pt2=(np.int32(slope_r*warped_img.shape[0] + intercept_r), warped_img.shape[0]), color=(255,0,0))
 
-    K  = np.identity(3)
-    retval, rotations, translations, normals = cv.decomposeHomographyMat(homo, K)
+            # cv.imwrite('./my_warp/%s-2.png'%(cnt), warped_img)
 
-    H = get_homography(rotations[0], translations[0], normals[0])
-    # print((rotations[0], translations[0], normals[0]))
-    H = H / H[2,2]
-    print(H)
-    print(homo)
-    dst2 = np.zeros_like(src)
-    for i in range(dst2.shape[0]):
-        coords = np.dot(H, src[i])
-        dst2[i] = coords / coords[2]
 
-    print(dst2)
-    print(dst)
-    # dst2 = [x for x in src]
-    # print(dst2.shape)
-    # print(dst2[:,2].shape)
-    M = cv.getPerspectiveTransform(src[:,:2].astype(np.float32), dst[:,:2].astype(np.float32)) # The transformation matrix
-    print(M)
+
+
+        else:
+            middle = np.where(np.all(img == [0,255,0], axis=-1))
+            right = np.where(np.all(img == [255,0,0], axis=-1))
+            # print(middle)
+            # print(right)
+            middle_warp = point_warp(middle, H, img)
+            right_warp = point_warp(right, H, img)
+            # print(middle_warp)
+            # print(right_warp)
+
+            # slope_l = linregress(left[0], left[1])[0]
+            # pass x as y values and vice versa to avoid infinite slope
+            slope_m, intercept_m = linregress(middle_warp[0], middle_warp[1])[:2]
+            slope_r, intercept_r = linregress(right_warp[0], right_warp[1])[:2]
+
+            # print(((np.int32(intercept_m), 0), (np.int32(slope_m*warped_img.shape[0] + intercept_m), warped_img.shape[0])))
+            # print(((np.int32(intercept_r), 0), (np.int32(slope_r*warped_img.shape[0] + intercept_r), warped_img.shape[0])))
+
+        print((slope_r, slope_m))
+
+
+        tol = 1e-03
+        if np.isclose(slope_r, slope_m, tol, equal_nan=False):
+            print('ja nice!')
+            print((slope_r,slope_m))
+            warped_img = warp_img(img,H)
+
+            # print(np.unique(warped_img, return_counts=True))
+            cv.imwrite('./parallel.png', warped_img)
+            return p
+
+        cnt += 1
+    print('No fitting angle found.')
+    return None
+
+def point_warp(points, H, img):
+    # X = np.array([0, points[0], img.shape[0]])
+    # print(X)
     # quit()
-    warped_img = cv.warpPerspective(img, homo, (IMAGE_W, IMAGE_H)) # Image warping
-    # cv.imwrite('./00-08-52-932_warp_lines_test.png', warped_img)
-    # print(K)
-    # print(np.linalg.inv(homo))
-    # print(homo.T)
+    X, Y = np.float64(points)
 
-    quit()
+    xmin, ymin = -img.shape[0]/2, -img.shape[1]/2
+    xmax, ymax = xmin + img.shape[0], ymin + img.shape[1]
 
-def get_warp_pos(left, middle, right):
-    l_cand = [[0, 1, 2, 3], [0, 1, 2, 3]]
-    m_cand = [[1, 2], [1,2]]
-    r_cand = [[2, 3], [2,3]]
-    return l_cand, m_cand, r_cand
+    X += xmin
+    Y += ymin
 
+    # to visualize: insert min/max to fit to image
+    X = np.append(X, [xmin, xmax])
+    Y = np.append(Y, [ymin, ymax])
+
+    # print(X.shape)
+    # print(Y.shape)
+    # print((X,Y))
+
+    a_vec = np.float64((H[0,0]*X + H[0,1]*Y + H[0,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]))
+    b_vec = np.float64((H[1,0]*X + H[1,1]*Y + H[1,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]))
+
+    # normalize to image
+    # a_vec = ((a_vec - np.amin(a_vec)) / (np.amax(a_vec)-np.amin(a_vec))) * 1920
+    # b_vec = ((b_vec - np.amin(b_vec)) / (np.amax(b_vec)-np.amin(b_vec))) * 1080
+
+    # print(X)
+    # print(a_vec[:-2])
+    # quit()
+    warped_points = a_vec[:-2], b_vec[:-2]
+
+
+    return warped_points
+
+
+
+def warp_img(src, H):
+    # height, width = 1000, 1000
+    # width, height = 1000, 1000
+    dst_height, dst_width = 1920, 1080
+    height, width = src.shape[:2]
+    # print((height,width))
+
+    xstart = -height/2
+    xend = xstart + height
+
+    ystart = -3*width/16
+    yend = ystart + width
+
+    x_vec = np.arange(xstart, xend)
+    y_vec = np.arange(ystart, yend)
+
+    Y, X = np.meshgrid(y_vec, x_vec)
+
+    # print(X.shape)
+    # print(Y.shape)
+    # print(H)
+
+    a_vec = np.float32((H[0,0]*X + H[0,1]*Y + H[0,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]))# + height/2)
+    b_vec = np.float32((H[1,0]*X + H[1,1]*Y + H[1,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]))# + width/2)
+
+    amin = np.amin(a_vec)
+    bmin = np.amin(b_vec)
+
+    # print((np.amin(a_vec), np.amax(a_vec)))
+    # print((np.amin(b_vec), np.amax(b_vec)))
+
+    a_vec = ((a_vec - np.amin(a_vec)) / (np.amax(a_vec)-np.amin(a_vec))) * dst_height
+    b_vec = ((b_vec - np.amin(b_vec)) / (np.amax(b_vec)-np.amin(b_vec))) * dst_width
+
+    # print(a_vec.shape)
+    # print(b_vec.shape)
+    # print(np.amin(a_vec), np.amax(a_vec))
+    # print(np.amin(b_vec), np.amax(b_vec))
+    # print(dst_points.shape)
+
+
+
+    dst_points = np.zeros((np.int32((np.amax(a_vec)+1, np.amax(b_vec)+1, 3))), dtype=np.uint8)
+    pos = np.stack((a_vec, b_vec), 2).astype(np.uint32)
+
+    # print(pos.shape)
+    # print(dst_points.shape)
+    # print(src.shape)
+
+    for i in np.arange(pos.shape[0]):
+        for k in np.arange(pos.shape[1]):
+            dst_points[pos[i,k,0], pos[i,k,1]] = src[i,k]
+
+    return dst_points
+
+
+# from Gerhard Roth
+def get_homography2(rot, K):
+    print(rot)
+    KR = np.dot(K, rot)
+    print(KR)
+    KRK = np.dot(KR, np.linalg.inv(K))
+    # print(KRK)
+    print('end of homography2')
+
+    return np.linalg.inv(KRK)
+
+# old version of homography, does not yield satisfying results.
 def get_homography(rot, t, n):
-    # n = np.array([1,0,0])
-    # t = np.array([1,0,1])
-    # rot = R.from_euler('xyz', (0, rot, X)).as_matrix()
+    n = n.reshape((3,1))
+    t = t.reshape((3,1))
 
     H = rot + np.dot(t, n.T)
-
+    H = H / H[2,2]
     return H
 
+def mark_lanes(img):
 
-# whitened = whiten(src)
-# code_book, distortion = kmeans(whitened, 3)
-# clusters, dist = vq(whitened, code_book)
-# print(clusters)
-# test_im = np.zeros_like(img)
-# print(np.max(src))
-# print(src.shape)
-# test_im[src[:,0],src[:,1]] = [255,255,255]
-# test_im[src[clusters==0,0],src[clusters==0,1]] = [255,0,255]
-# test_im[src[clusters==1,0],src[clusters==1,1]] = [255,0,0]
-# test_im[src[clusters==2,0],src[clusters==2,1]] = [0,0,255]
 
-# cv.imshow('test', test_im)
-# cv.imwrite('./test.png', test_im)
-#
-# # src = np.float32([[0, 1080], [1920, 1080], [0, IMAGE_H], [IMAGE_W, IMAGE_H]])
-# # dst = np.float32([[780, IMAGE_H], [1020, IMAGE_H], [0, 0], [IMAGE_W, 0]])
-# Minv = cv.getPerspectiveTransform(dst, src) # Inverse transformation
-# homo, _ = cv.findHomography(src,dst)
-# retval, rotations, translations, normals = cv.decomposeHomographyMat(homo, K)
-#
-#
-# # print(M)
-# # print(np.dot(src,M))
-# # print(Minv)
-# # print(homo)
-# for r, t, n in zip(rotations, translations, normals):
-#     print(R.from_matrix(r).as_euler('xyz', degrees=True))
-#     print(t)
-#     print(n)
-# # print(rotations)
-# # print(translations)
-# # print(normals)
-#
-#
-#
-# # img = img[450:(450+IMAGE_H), 0:IMAGE_W] # Apply np slicing for ROI crop
-# warped_img = cv.warpPerspective(img, M, (IMAGE_W, IMAGE_H)) # Image warping
-# # cv.imwrite('./00-08-52-932_warp_lines.png', warped_img)
-# plt.imshow(cv.cvtColor(warped_img, cv.COLOR_BGR2RGB)) # Show results
-# plt.show()
+
+
 
 if __name__ == '__main__':
-    birdview()
+    img = cv.imread('./00-08-52-932_points.png') # Read the test img
+    mark_lanes(img)
+    # birdview(img, False)
