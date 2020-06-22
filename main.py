@@ -15,12 +15,12 @@ Updates camera-parameters with data from IMU.
 
 def main():
 
-    world_frame, plane_frame, cam_frame, imu_frame = get_cordFrames()
+    world_frame, fw_frame, cam_frame, imu_frame = get_cordFrames()
 
-    csv_path = '../100GOPRO/kandidaten/csv/'
-    video_path = '../100GOPRO/kandidaten/'
-    file = '2_3'
-    start_msec = 2000.0
+    csv_path = '../100GOPRO/testfahrt_1006/kandidaten/csv/'
+    video_path = '../100GOPRO/testfahrt_1006/kandidaten/'
+    file = '2_2'
+    start_msec = 000.0
     font = cv.FONT_HERSHEY_SIMPLEX
 
     # get data from csv as array, ignore first two elements to resolve empty datapoints
@@ -36,52 +36,64 @@ def main():
     # int counting frames(for saving snapshots)
     frame_nr_int = 0
     while(cap.isOpened()):
-        # Capture frame-by-frame
+        # capture frame-by-frame
         ret, frame = cap.read()
         if ret:
+            # print('ret')
             height,width = frame.shape[:2]
-            # find closest Datapoint in time to current Frame
+            # find closest Datapoint in time to current frame
             nearest_rad = find_nearest(radius_madgwick[0], cap.get(0))
             mil, radius, ori = radius_madgwick[:,nearest_rad]
             # cast Quat from string(pandas) to float
             if type(ori)==str:
                 ori = [np.float64(x.strip(' []')) for x in ori.split(',')]
-            # rearrange to scalar-last format, cast to Euler to extract only Roll-Angle
+            # rearrange to scalar-last format, cast to Euler
             ori = [ori[1],ori[2],ori[3],ori[0]]
             ori_eul = R.from_quat(ori).as_euler('xyz',degrees=False)
-            # check, if Euler conversion returns same Quaternion
+            # check if Euler conversion returns same Quaternion:
             # assert np.abs(np.dot(R.from_euler('xyz', ori_eul).as_quat(), ori) - 1) < 0.00001
 
+            # update fw_frame with pitch & yaw
+            # ori_xy_fw = R.from_euler('xyz', [ori_eul[0], ori_eul[1], 0])
+            ori_x_fw = R.from_euler('xyz', [ori_eul[0], 0, 0])
+            # fw_trans = transform([0,0,0], ori_xy_fw.as_quat())
+            fw_trans = transform([0,0,0], ori_x_fw.as_quat())
+            fw_frame.update_ori(fw_trans)
 
-            ori_yz = R.from_euler('xyz',[0, 0, -ori_eul[2]],degrees=False)
+            ori_z_imu = R.from_euler('xyz',[0, 0, -ori_eul[2]], degrees=False)
+            ori_yz_imu = R.from_euler('xyz',[0, -ori_eul[1], -ori_eul[2]], degrees=False)
+
             # ckeck translation of camera with angle of 0 and 90
-            # ori_yz = R.from_euler('xyz',[0, 0, -np.pi/2],degrees=False)
-            # ori_yz = R.from_euler('xyz',[0, 0, 0],degrees=False)
+            # ori_z_imu = R.from_euler('xyz',[0, 0, -np.pi/2],degrees=False)
+            # ori_z_imu = R.from_euler('xyz',[0, 0, 0],degrees=False)
 
-            pos_from_angle = ori_yz.apply([0, -1.1237, 0])
+            # pos_from_angle = ori_yz_imu.apply([0, 1.1237, 0])
+            pos_from_angle = ori_yz_imu.apply([0, 1.1237, 0])
             # print(pos_from_angle)
 
             # calc new transform of IMU to world
             imu_trans = transform(pos_from_angle, [
                                                     [0, 0, np.sin(np.pi/4),np.cos(np.pi/4)],
                                                     [np.sin(np.pi/2), 0, 0, np.cos(np.pi/2)],
-                                                    # [ori_yz[1], 0, 0, np.cos(np.arcsin(ori_yz[1]))]
-                                                    ori_yz.as_quat()
-                                                    # [0,np.sin(-np.pi/32),0,np.cos(-np.pi/32)]
+                                                    # [ori_z_imu[1], 0, 0, np.cos(np.arcsin(ori_z_imu[1]))]
+                                                    # ori_z_imu.as_quat()
+                                                    ori_yz_imu.as_quat()
+                                                    # [0,np.sin(np.pi/4),0,np.cos(np.pi/4)]
                                                    ]
                                  )
             imu_frame.update_ori(imu_trans)
+            # print(imu_frame)
 
             cv.putText(frame, 'Frame Nr: %s'%(cap.get(0)), (1650,20), font, 0.5, (0, 255, 0), 2, cv.LINE_AA)
             cv.putText(frame, 'Radius: %s'%(radius), (1650,40), font, 0.5, (0, 255, 0), 2, cv.LINE_AA)
             cv.putText(frame, 'MIlliseconds(IMU): %s'%(mil), (1650,60), font, 0.5, (0, 255, 0), 2, cv.LINE_AA)
 
             # calc visible trajectory in frame and view from above
-            curve_proj, bird_view = draw_curve(radius, cam_frame)
+            curve_proj, bird_view = draw_curve(radius, cam_frame, fw_frame)
             # print(type(curve_proj))
             curve_proj=curve_proj[curve_proj[:,0]>=0].astype(np.int32)
-            curve_proj=curve_proj[curve_proj[:,0]<1920]
-            curve_proj=curve_proj[curve_proj[:,1]<1080]
+            # curve_proj=curve_proj[curve_proj[:,0]<1920]
+            # curve_proj=curve_proj[curve_proj[:,1]<1080]
 
             # rr,cc = bezier_curve(*curve_proj[0], *curve_proj[int(curve_proj.shape[0]/2)], *curve_proj[-1], weight=5)
             # print((rr,cc))
@@ -117,12 +129,14 @@ def main():
 
             # frame = ((frame+frame2)/2).astype(np.uint8)
             # frame[frame>255]=255
+            cv.circle(frame, (956,559), 10, (255,0,0))
+
             x_offset = width - bird_view.shape[1]
             y_offset = np.int(height/3) - bird_view.shape[0]
             frame[y_offset:y_offset+bird_view.shape[0], x_offset:x_offset+bird_view.shape[1]] = bird_view
 
             # save every frame as png
-            # cv.imwrite('../100GOPRO/kandidaten/%s_processed/%s.png'%(file, frame_nr_int), frame)
+            cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_processed/%s.png'%(file, frame_nr_int), frame)
             frame_nr_int += 1
             cv.imshow(file, frame)
         if cv.waitKey(1) & 0xFF == ord('q'):

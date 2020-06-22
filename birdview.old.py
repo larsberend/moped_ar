@@ -23,11 +23,11 @@ def birdview():
     # img = np.rot90(img)
     # cv.imwrite('malwiedertest.png',img)
     cnt = 0
-    for p in np.arange(np.pi-0.01, np.pi, 0.1):
+    for p in np.arange(0.1, np.pi, 0.1):
         # for o in np.arange(0.9, 1, 0.1):
         # print(p)
         # rot = R.from_euler('xyz', (0, p, 0), degrees=False).as_matrix()
-        rot = R.from_euler('xyz', (0, 0.69, 0), degrees=False).as_matrix()
+        rot = R.from_euler('xyz', (0, p, 0), degrees=False).as_matrix()
         # H = get_homography(rot = rot,
         #                t = np.array([0, 0, 0]),
         #                n = np.array([0, 1, 0])
@@ -70,14 +70,14 @@ def birdview():
         middle_warp = np.where(np.all(warped_img == [0,255,0], axis=-1))
         # print(middle_warp)
         right_warp = np.where(np.all(warped_img == [255,0,0], axis=-1))
-        slope_m, intercept_m = linregress(middle_warp[0], middle_warp[1])[:2]
-        slope_r, intercept_r = linregress(right_warp[0], right_warp[1])[:2]
+        # slope_m, intercept_m = linregress(middle_warp[0], middle_warp[1])[:2]
+        # slope_r, intercept_r = linregress(right_warp[0], right_warp[1])[:2]
         # print(middle_warp)
         # print(right_warp)
-        print((slope_r, slope_m))
+        # print((slope_r, slope_m))
 
-        warped_img = cv.line(warped_img, pt1=(np.int32(intercept_m), 0), pt2=(np.int32(slope_m*warped_img.shape[0] + intercept_m), warped_img.shape[0]), color=(0,255,0))
-        warped_img = cv.line(warped_img, pt1=(np.int32(intercept_r), 0), pt2=(np.int32(slope_r*warped_img.shape[0] + intercept_r), warped_img.shape[0]), color=(255,0,0))
+        # warped_img = cv.line(warped_img, pt1=(np.int32(intercept_m), 0), pt2=(np.int32(slope_m*warped_img.shape[0] + intercept_m), warped_img.shape[0]), color=(0,255,0))
+        # warped_img = cv.line(warped_img, pt1=(np.int32(intercept_r), 0), pt2=(np.int32(slope_r*warped_img.shape[0] + intercept_r), warped_img.shape[0]), color=(255,0,0))
 
         middle = np.where(np.all(img == [0,255,0], axis=-1))
         # print(middle)
@@ -114,6 +114,7 @@ def birdview():
             quit()
             # slope_l, slope_m, slope_r = 1,1,1
             # print((slope_l,slope_m,slope_r))
+        cnt += 1
 
         '''
         cnt += 1
@@ -156,8 +157,8 @@ def point_warp(points, H, img):
     b_vec = np.float64((H[1,0]*X + H[1,1]*Y + H[1,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]))
 
     # normalize to image
-    a_vec = ((a_vec - np.amin(a_vec)) / (np.amax(a_vec)-np.amin(a_vec))) * 1920
-    b_vec = ((b_vec - np.amin(b_vec)) / (np.amax(b_vec)-np.amin(b_vec))) * 1080
+    # a_vec = ((a_vec - np.amin(a_vec)) / (np.amax(a_vec)-np.amin(a_vec))) * 1920
+    # b_vec = ((b_vec - np.amin(b_vec)) / (np.amax(b_vec)-np.amin(b_vec))) * 1080
 
     # print(X)
     # print(a_vec[:-2])
@@ -180,7 +181,7 @@ def my_warp4(src, H):
     xstart = -height/2
     xend = xstart + height
 
-    ystart = -width/2
+    ystart = -3*width/16
     yend = ystart + width
 
     x_vec = np.arange(xstart, xend)
