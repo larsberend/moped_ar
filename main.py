@@ -25,6 +25,7 @@ def main():
     start_msec = 000.0
     font = cv.FONT_HERSHEY_SIMPLEX
 
+
     # get data from csv as array, ignore first two elements to resolve empty datapoints
     radius_madgwick = pd.read_csv(csv_path + file + '-gyroAcclGpsMadgwickQuat.csv')[['Milliseconds','Radius','Quat']].to_numpy()[2:].swapaxes(1,0)
     # print(radius_madgwick)
@@ -33,6 +34,7 @@ def main():
 
 
     cap = cv.VideoCapture(video_path + file + '.mp4')
+    pitch_angle = np.zeros((np.int32(cap.get(7)),2))
     # out = cv.VideoWriter('3_2_curve.avi', cv.VideoWriter_fourcc('M','J','P','G'), 59.94, (1920,1080))
     cap.set(0, start_msec)
     # int counting frames(for saving snapshots)
@@ -67,14 +69,18 @@ def main():
 
 
             if bv == True:
-                new_frame, retval = mark_lanes(frame, -ori_eul[2]*2)
+                new_frame, retval = mark_lanes(frame, -ori_eul[2])
                 if retval:
-                    img, angle_calc = birdview(new_frame, False, angle_calc)
-                    if angle_calc is not None:
+                    img, angle_calc, found = birdview(new_frame, False, angle_calc)
+                    if found:
                         # print(angle_calc)
+                        pitch_angle[frame_nr_int] = mil, angle_calc
                         print(np.degrees(angle_calc))
+                    else:
+                        print('No fitting angle found')
                 else:
                     print('no lines found in image')
+                    pitch_angle[frame_nr_int] = mil, None
                 cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_marked/%s.png'%(file, frame_nr_int), new_frame)
                 cv.imshow(file, new_frame)
                 print(frame_nr_int)
@@ -171,12 +177,15 @@ def main():
                 frame[y_offset:y_offset+top_view.shape[0], x_offset:x_offset+top_view.shape[1]] = top_view
 
                 # save every frame as png
-                cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_processed/%s.png'%(file, frame_nr_int), frame)
+                # cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_processed/%s.png'%(file, frame_nr_int), frame)
                 cv.imshow(file, frame)
             frame_nr_int += 1
         if cv.waitKey(1) & 0xFF == ord('q'):
             print(frame_nr_int)
-            break
+            pitch_df = pd.DataFrame(data=pitch_angle, columns=['Milliseconds', 'Pitch_from_vis'])
+            # print(csv_path + file + '-pitch.csv')
+            pitch_df.to_csv(csv_path + file + '-pitch.csv')
+            quit()
 
     # When everything done, release the capture
     cap.release()

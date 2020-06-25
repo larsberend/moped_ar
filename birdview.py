@@ -15,13 +15,12 @@ IMAGE_H = 562
 IMAGE_W = 1920
 
 font = cv.FONT_HERSHEY_SIMPLEX
+focal_mat = np.array([[f,0,0],[0,f,0], [0,0,1]], dtype=np.float64)
+pixel_mat = np.array([[1/pu,0,u0], [0,1/pv,v0],[0,0,1]], dtype=np.float64)
+K = np.dot(pixel_mat, focal_mat)
 
 
 def birdview(img, view, last_angle):
-    focal_mat = np.array([[f,0,0],[0,f,0], [0,0,1]], dtype=np.float64)
-    pixel_mat = np.array([[1/pu,0,u0], [0,1/pv,v0],[0,0,1]], dtype=np.float64)
-    K = np.dot(pixel_mat, focal_mat)
-    warped_img = None
 
     yellow = np.where(np.all(img == [0,204,204], axis=-1))
     blue = np.where(np.all(img == [204,204,0], axis=-1))
@@ -37,38 +36,44 @@ def birdview(img, view, last_angle):
 
     # yellow = np.where(np.all(img == [0,204,204], axis=-1))
     # blue = np.where(np.all(img == [204,204,0], axis=-1))
+    warped_img, angle, found = iter_angle(last_angle, img, view, yellow, blue)
 
-    if last_angle is not None:
-        search_grid = np.arange(last_angle-0.1, last_angle+0.1, 0.001)
+    if found:
+        return warped_img, angle, True
     else:
-        search_grid = np.arange(0, np.pi, 0.01)
+        warped_img, angle, found = iter_angle(angle, img, view, yellow, blue)
+        if found:
+            return warped_img, angle, True
+        else:
+            print('No fitting angle found')
+            return warped_img, None, False
 
+def iter_angle(last_angle, img, view, yellow, blue):
+    warped_img = None
     cnt = 0
     # print(search_grid.shape)
-    for p in search_grid:
+    angle_guess = 0
+    smallest_diff = 100
+
+    if last_angle is None:
+        search_grid = np.arange(0, np.pi, 0.01)
+    else:
+        search_grid = np.arange(last_angle-0.1, last_angle+0.1, 0.001)
+
+
+    for angle in search_grid:
         # print(p)
-        rot = R.from_euler('xyz', (0, p, 0), degrees=False).as_matrix()
+        rot = R.from_euler('xyz', (0, angle, 0), degrees=False).as_matrix()
         H = get_homography2(rot, K)
 
         if view:
             warped_img = warp_img(img, H)
             yellow_warp = np.where(np.all(warped_img == [0,204,204], axis=-1))
             blue_warp = np.where(np.all(warped_img == [204,204,0], axis=-1))
-            # pass x as y values and vice versa to avoid infinite slope
 
-            ransac_y = linear_model.RANSACRegressor()
-
-            ransac_y.fit(yellow_warp[0].reshape(len(yellow_warp[0]), 1), yellow_warp[1])
-            line_ransac_y = ransac_y.predict(yellow_warp[0].reshape(len(yellow_warp[0]), 1))
-
-            slope_y, intercept_y = linregress(yellow_warp[0], line_ransac_y)[:2]
+            slope_y, intercept_y = my_ransac(yellow_warp)
+            slope_b, intercept_b = my_ransac(blue_warp)
             # print(slope_y)
-
-            ransac_b = linear_model.RANSACRegressor()
-            ransac_b.fit(blue_warp[0].reshape(len(blue_warp[0]), 1), blue_warp[1])
-            line_ransac_b = ransac_b.predict(blue_warp[0].reshape(len(blue_warp[0]), 1))
-
-            slope_b, intercept_b = linregress(blue_warp[0], line_ransac_b)[:2]
             # print(slope_b)
 
             warped_img = cv.line(warped_img, pt1=(np.int32(intercept_y), 0), pt2=(np.int32(slope_y*warped_img.shape[0] + intercept_y), warped_img.shape[0]), color=(0,255,0))
@@ -91,19 +96,9 @@ def birdview(img, view, last_angle):
             # pass x as y values and vice versa to avoid infinite slope
             # slope_y, intercept_y = linregress(yellow_warp[0], yellow_warp[1])[:2]
             # slope_b, intercept_b = linregress(blue_warp[0], blue_warp[1])[:2]
-            ransac_y = linear_model.RANSACRegressor()
-
-            ransac_y.fit(yellow_warp[0].reshape(len(yellow_warp[0]), 1), yellow_warp[1])
-            line_ransac_y = ransac_y.predict(yellow_warp[0].reshape(len(yellow_warp[0]), 1))
-
-            slope_y, intercept_y = linregress(yellow_warp[0], line_ransac_y)[:2]
+            slope_y, intercept_y = my_ransac(yellow_warp)
             # print(slope_y)
-
-            ransac_b = linear_model.RANSACRegressor()
-            ransac_b.fit(blue_warp[0].reshape(len(blue_warp[0]), 1), blue_warp[1])
-            line_ransac_b = ransac_b.predict(blue_warp[0].reshape(len(blue_warp[0]), 1))
-
-            slope_b, intercept_b = linregress(blue_warp[0], line_ransac_b)[:2]
+            slope_b, intercept_b = my_ransac(blue_warp)
             # print(slope_b)
             # warped_img = cv.line(warped_img, pt1=(np.int32(intercept_y), 0), pt2=(np.int32(slope_y*warped_img.shape[0] + intercept_y), warped_img.shape[0]), color=(0,255,0))
             # cv.imwrite('./guckstehier.png', warped_img)
@@ -113,10 +108,13 @@ def birdview(img, view, last_angle):
             # print(((np.int32(intercept_r), 0), (np.int32(slope_r*warped_img.shape[0] + intercept_r), warped_img.shape[0])))
 
         # print((slope_y, slope_b))
-
-
+        diff = np.abs(slope_b-slope_y)
+        if diff < smallest_diff:
+            smallest_diff = diff
+            angle_guess = angle
+            # print((angle_guess,smallest_diff))
         tol = 1e-02
-        if np.isclose(slope_y, slope_b, tol, equal_nan=False):
+        if np.isclose(smallest_diff, 0, rtol=1, atol=tol, equal_nan=False):
             # print('ja nice!')
             # print((slope_y,slope_b))
             # warped_img = warp_img(img,H)
@@ -124,12 +122,21 @@ def birdview(img, view, last_angle):
             # # print(np.unique(warped_img, return_counts=True))
             # cv.imwrite('./parallel.png', warped_img)
 
-            return warped_img, p
+            return warped_img, angle_guess, True
 
         cnt += 1
+    return warped_img, angle_guess, False
 
-    print('No fitting angle found.')
-    return warped_img, last_angle
+
+def my_ransac(warped_p):
+    ransac = linear_model.RANSACRegressor()
+
+    # pass x as y values and vice versa to avoid infinite slope
+    ransac.fit(warped_p[0].reshape(len(warped_p[0]), 1), warped_p[1])
+    line_ransac = ransac.predict(warped_p[0].reshape(len(warped_p[0]), 1))
+
+    slope, intercept = linregress(warped_p[0], line_ransac)[:2]
+    return slope, intercept
 
 def point_warp(points, H, img):
     # X = np.array([0, points[0], img.shape[0]])
@@ -235,15 +242,6 @@ def get_homography2(rot, K):
 
     return np.linalg.inv(KRK)
 
-# old version of homography, does not yield satisfying results.
-def get_homography(rot, t, n):
-    n = n.reshape((3,1))
-    t = t.reshape((3,1))
-
-    H = rot + np.dot(t, n.T)
-    H = H / H[2,2]
-    return H
-
 # from https://medium.com/@galen.ballew/opencv-lanedetection-419361364fc0
 def mark_lanes(img, roll_angle):
     # img = rotate_image(img, roll_angle)
@@ -330,9 +328,9 @@ def mark_lanes(img, roll_angle):
 
             klines = klines2
 
-            c1, c2 = kmeans2.cluster_centers_.astype(np.int32)
-            cv.line(img, (c1[0], c1[1]), (c1[2], c1[3]), (120,120,0), 50)
-            cv.line(img, (c2[0], c2[1]), (c2[2], c2[3]), (0,120,120), 50)
+            # c1, c2 = kmeans2.cluster_centers_.astype(np.int32)
+            # cv.line(img, (c1[0], c1[1]), (c1[2], c1[3]), (120,120,0), 50)
+            # cv.line(img, (c2[0], c2[1]), (c2[2], c2[3]), (0,120,120), 50)
 
             line_img = np.zeros((roi_image.shape[0], roi_image.shape[1], 3), dtype=np.uint8)
             for l in range(lines.shape[0]):
