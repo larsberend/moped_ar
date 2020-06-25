@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
-from birdview import mark_lanes, birdview
+from birdview import birdview
+from mark_lanes import mark_lanes
 from cordFrames import cordFrame, worldFrame, transform, get_cordFrames
 from scipy.spatial.transform import Rotation as R # quaternion in scalar-last
 from skimage.draw import circle_perimeter, line_aa, bezier_curve
@@ -74,6 +75,8 @@ def main():
                     img, angle_calc, found = birdview(new_frame, False, angle_calc)
                     if found:
                         # print(angle_calc)
+                        cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_ransac/%s.png'%(file, frame_nr_int), img)
+                        # quit()
                         pitch_angle[frame_nr_int] = mil, angle_calc
                         print(np.degrees(angle_calc))
                     else:
