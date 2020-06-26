@@ -23,8 +23,10 @@ f = np.float64(0.019/5.6)
 pu = np.float64(0.0062/1920)
 pv = np.float64(0.0045/1080)
 # central coordinates of video
-u0 = 956
-v0 = 559
+u0 = 959
+v0 = 648
+# u0 = 956
+# v0 = 559
 factor = 10 # take 100 points per meter, show 1
 view_dist = 100
 

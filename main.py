@@ -70,12 +70,12 @@ def main():
 
 
             if bv == True:
-                new_frame, retval = mark_lanes(frame, -ori_eul[2])
+                marked_im, retval = mark_lanes(frame, -ori_eul[2])
+                bird_im = np.zeros((frame.shape[1], frame.shape[0], 3))
                 if retval:
-                    img, angle_calc, found = birdview(new_frame, False, angle_calc)
+                    bird_im, angle_calc, found = birdview(marked_im, False, angle_calc)
                     if found:
                         # print(angle_calc)
-                        cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_ransac/%s.png'%(file, frame_nr_int), img)
                         # quit()
                         pitch_angle[frame_nr_int] = mil, angle_calc
                         print(np.degrees(angle_calc))
@@ -84,8 +84,9 @@ def main():
                 else:
                     print('no lines found in image')
                     pitch_angle[frame_nr_int] = mil, None
-                cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_marked/%s.png'%(file, frame_nr_int), new_frame)
-                cv.imshow(file, new_frame)
+                cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_birdview/%s.png'%(file, frame_nr_int), bird_im)
+                cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_marked/%s.png'%(file, frame_nr_int), marked_im)
+                cv.imshow(file, marked_im)
                 print(frame_nr_int)
 
 
