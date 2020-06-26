@@ -19,15 +19,15 @@ def mark_lanes(img, roll_angle):
     img = skimage.transform.rotate(img, -roll_angle, clip=True, preserve_range=True).astype(np.uint8)
     # print(img.dtype)
 
-    # cv.imwrite('schaunwirmal.png', img)
+    cv.imwrite('schaunwirmal.png', img)
 
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    kernel_size = 5
+    kernel_size = 11
     gauss_gray = cv.GaussianBlur(gray, (kernel_size,kernel_size), 0)
     # cv.imwrite('schaunwirmal1.png', gauss_gray)
     mask_white = cv.inRange(gauss_gray, 230, 255)
     mask_w_image = cv.bitwise_and(gauss_gray, mask_white)
-    # cv.imwrite('schaunwirmal2.png', gauss_gray)
+    cv.imwrite('schaunwirmal2.png', gauss_gray)
     # kernel_size = 5
     # gauss_gray = cv.GaussianBlur(mask_w_image, (kernel_size,kernel_size), 0)
 
@@ -35,7 +35,8 @@ def mark_lanes(img, roll_angle):
 
     low_threshold = 50
     high_threshold = 150
-    canny_edges = cv.Canny(mask_w_image,low_threshold,high_threshold)
+    aperture_size = 1000
+    canny_edges = cv.Canny(mask_w_image,low_threshold,high_threshold, aperture_size)
 
     imshape = img.shape
     lower_left = [0,imshape[0]]
@@ -54,7 +55,7 @@ def mark_lanes(img, roll_angle):
     roi_image = region_of_interest(canny_edges, vertices)
     # print(np.array_equal(roi_image, canny_edges))
 
-    # cv.imwrite('schaunwirmal3.png', roi_image)
+    cv.imwrite('schaunwirmal3.png', roi_image)
 
     #rho and theta are the distance and angular resolution of the grid in Hough space
     #same values as quiz
@@ -110,21 +111,58 @@ def mark_lanes(img, roll_angle):
             # lines = np.roll(lines,1,2)
             # quit()
             # print(lines)
+            slope_arr = np.zeros(len(lines))
+            for l in range(len(lines)):
+                for x1,y1,x2,y2 in lines[l]:
+                    slope_arr[l] = ((y2-y1)/(x2-x1))
+            kmeans2 = KMeans(n_clusters = 2)
+            klines = kmeans2.fit_predict(slope_arr.reshape(-1,1))
+            hough_img = img.copy()
+
+            for l in range(len(lines)):
+                for x1,y1,x2,y2 in lines[l]:
+                    if klines[l] == 0:
+                        hough_img = cv.line(hough_img, pt1=(x1,y1), pt2=(x2,y2), color=(0,255,0), thickness=3)
+                    else:
+                        hough_img = cv.line(hough_img, pt1=(x1,y1), pt2=(x2,y2), color=(255,0,255), thickness=3)
             lines = lines.reshape((lines.shape[0],2,2))
+
+            cv.imwrite('schaunwirmal4.png', hough_img)
+            # print(slope_arr)
+            # print(klines)
+            # print(lines[klines==0])
+            lines_y = lines[klines==0]
+            lines_b = lines[klines==1]
+            # print(lines)
+            # print(lines_y)
+            # print(lines_b)
             # print(lines[0])
-            line_points = connect2(lines[0])
-            for ends in lines[1:]:
-                line_points = np.concatenate((line_points, connect2(ends)))
+            line_points_y = connect2(lines_y[0])
+            for ends in lines_y[1:]:
+                line_points_y = np.concatenate((line_points_y, connect2(ends)))
+
+            line_points_b = connect2(lines_b[0])
+            for ends in lines_b[1:]:
+                line_points_b = np.concatenate((line_points_b, connect2(ends)))
+
+
+            slope_y, intercept_y, ransac_y = my_ransac(line_points_y, True)
+            slope_b, intercept_b, ransac_b = my_ransac(line_points_b, True)
+            print((slope_y,slope_b))
+            img[ransac_b[1], ransac_b[0]] = [255,0,0]
+            img[ransac_y[1], ransac_y[0]] = [0,255,255]
+            cv.imwrite('schaunwirmal5.png', img)
+            return img, True
+            # quit()
             # print(line_points)
             # img[line_points[:,1], line_points[:,0]] = [255,0,0]
             # for l in range(len(lines)):
             #     for x1,y1,x2,y2 in lines[l]:
             #         img = cv.line(img, pt1=(x1,y1), pt2=(x2,y2), color=(0,255,0))
 
-            # cv.imwrite('schaunwirmal4.png', img)
 
             # print(line_points[line_points>1080])
-
+            '''
             line_b, line_y = my_ransac_two(line_points, False)
             if line_b is None:
                 return img, False
@@ -161,12 +199,34 @@ def mark_lanes(img, roll_angle):
                 #         cv.circle(weighted_img, (x,y), 5,  (255,0,0), -1)
                 # weighted_img = skimage.transform.rotate(weighted_img, roll_angle/2, clip=True, preserve_range=True)
                 # weighted_img = rotate_image(weighted_img, -roll_angle/2)
-                # cv.imwrite('schaunwirmal5.png', weighted_img)
-
+                cv.imwrite('schaunwirmal5.png', weighted_img)
                 return weighted_img, True
+                '''
     return img, False
 
 
+def my_ransac(warped_p, return_points):
+    ransac = linear_model.RANSACRegressor()
+
+    # print(warped_p[:,0])
+    # pass x as y values and vice versa to avoid infinite slope
+
+    ransac.fit(warped_p[:,0].reshape(-1, 1), warped_p[:,1])
+
+    ransacX = np.arange(min(warped_p[:,0]), max(warped_p[:,0]))
+    line_ransac = ransac.predict(ransacX.reshape(-1, 1))
+
+    ransacX = ransacX[line_ransac < 1920]
+    line_ransac = line_ransac[line_ransac < 1920]
+    ransacX = ransacX[line_ransac >= 0]
+    line_ransac = line_ransac[line_ransac >= 0]
+
+    slope, intercept = linregress(ransacX, line_ransac)[:2]
+    # print(slope)
+    if return_points:
+        return slope, intercept, (ransacX.astype(np.int64), line_ransac.astype(np.int64))
+    else:
+        return slope, intercept
 
 
 

@@ -10,6 +10,7 @@ from skimage.draw import line
 import skimage.transform
 from sklearn.cluster import KMeans
 from sklearn import linear_model
+from mark_lanes import mark_lanes
 
 IMAGE_H = 562
 IMAGE_W = 1920
@@ -22,10 +23,12 @@ K = np.dot(pixel_mat, focal_mat)
 
 def birdview(img, view, last_angle):
 
-    yellow = np.where(np.all(img == [0,204,204], axis=-1))
-    blue = np.where(np.all(img == [204,204,0], axis=-1))
+    yellow = np.where(np.all(img == [0,255,255], axis=-1))
+    blue = np.where(np.all(img == [255,0,0], axis=-1))
     # left = np.where(np.all(warped_img == [0,0,255], axis=-1))
     # print(yellow)
+    # print(blue)
+    # quit()
     # for x,y in zip(yellow[0], yellow[1]):
     #     img = cv.circle(img, (y,x), 10,  (0,0,255))
     # cv.imwrite('cirles.png', img)
@@ -34,8 +37,8 @@ def birdview(img, view, last_angle):
 
     img = img[new_height:, 0:new_width+1]
 
-    yellow = np.where(np.all(img == [0,204,204], axis=-1))
-    blue = np.where(np.all(img == [204,204,0], axis=-1))
+    yellow = np.where(np.all(img == [0,255,255], axis=-1))
+    blue = np.where(np.all(img == [255,0,0], axis=-1))
     # yellow = np.where(np.all(img == [0,204,204], axis=-1))
     # blue = np.where(np.all(img == [204,204,0], axis=-1))
     warped_img, angle, found = iter_angle(last_angle, img, view, yellow, blue)
@@ -51,46 +54,52 @@ def birdview(img, view, last_angle):
             return warped_img, None, False
 
 def iter_angle(last_angle, img, view, yellow, blue):
-    warped_img = None
+    warped_img = np.zeros((img.shape[1], img.shape[0],3))
     cnt = 0
     # print(search_grid.shape)
     angle_guess = 0
     smallest_diff = 100
 
     if last_angle is None:
-        search_grid = np.arange(0, np.pi, 0.01)
+        search_grid = np.arange(0, np.pi/4, 0.001)
     else:
-        search_grid = np.arange(last_angle-0.1, last_angle+0.1, 0.001)
+        search_grid = np.arange(last_angle-0.01, last_angle+0.01, 0.0001)
 
 
     for angle in search_grid:
         # print(p)
+        # angle = np.radians(40)
         rot = R.from_euler('xyz', (0, angle, 0), degrees=False).as_matrix()
         H = get_homography2(rot, K)
 
-        if view:
-            warped_img = warp_img(img, H)
-            yellow_warp = np.where(np.all(warped_img == [0,204,204], axis=-1))
-            blue_warp = np.where(np.all(warped_img == [204,204,0], axis=-1))
-
-            slope_y, intercept_y = my_ransac(yellow_warp)
-            slope_b, intercept_b = my_ransac(blue_warp)
-            # print(slope_y)
-            # print(slope_b)
-
-            warped_img = cv.line(warped_img, pt1=(np.int32(intercept_y), 0), pt2=(np.int32(slope_y*warped_img.shape[0] + intercept_y), warped_img.shape[0]), color=(0,255,0))
-            warped_img = cv.line(warped_img, pt1=(np.int32(intercept_b), 0), pt2=(np.int32(slope_b*warped_img.shape[0] + intercept_b), warped_img.shape[0]), color=(255,0,0))
-
-            cv.imwrite('./my_warp/%s-3.png'%(cnt), warped_img)
-
-
+        # if view:
+        #     warped_img = warp_img(img, H)
+        #     yellow_warp = np.where(np.all(warped_img == [0,255,255], axis=-1))
+        #     blue_warp = np.where(np.all(warped_img == [255,0,0], axis=-1))
+        #
+        #     slope_y, intercept_y = my_ransac(yellow_warp)
+        #     slope_b, intercept_b = my_ransac(blue_warp)
+        #     # print(slope_y)
+        #     # print(slope_b)
+        #
+        #     warped_img = cv.line(warped_img, pt1=(np.int32(intercept_y), 0), pt2=(np.int32(slope_y*warped_img.shape[0] + intercept_y), warped_img.shape[0]), color=(0,255,0))
+        #     warped_img = cv.line(warped_img, pt1=(np.int32(intercept_b), 0), pt2=(np.int32(slope_b*warped_img.shape[0] + intercept_b), warped_img.shape[0]), color=(255,0,0))
+        #
+        #     cv.imwrite('./my_warp/%s-3.png'%(cnt), warped_img)
 
 
-        else:
-            # print(yellow)
-            # print(blue)
-            yellow_warp = point_warp(yellow, H, img)
-            blue_warp = point_warp(blue, H, img)
+        # else:
+
+
+        # print(yellow)
+        # print(blue)
+        yellow_warp = point_warp(yellow, H, img)
+        blue_warp = point_warp(blue, H, img)
+
+        slope_y, intercept_y = linregress(yellow_warp)[:2]
+        slope_b, intercept_b = linregress(blue_warp)[:2]
+
+
             # print(yellow_warp)
             # print(blue_warp)
 
@@ -105,8 +114,8 @@ def iter_angle(last_angle, img, view, yellow, blue):
 
             # slope_y, intercept_y, yellow_rans_X, yellow_rans_Y = my_ransac(yellow_warp, True)
             # slope_b, intercept_b, blue_rans_X, blue_rans_Y = my_ransac(blue_warp, True)
-            slope_y, intercept_y, yellow_rans = my_ransac(yellow_warp, True)
-            slope_b, intercept_b, blue_rans = my_ransac(blue_warp, True)
+            # slope_y, intercept_y, yellow_rans = my_ransac(yellow_warp, True)
+            # slope_b, intercept_b, blue_rans = my_ransac(blue_warp, True)
 
 
             # print(slope_b)
@@ -123,7 +132,8 @@ def iter_angle(last_angle, img, view, yellow, blue):
             smallest_diff = diff
             angle_guess = angle
             # print((angle_guess,smallest_diff))
-        tol = 1e-02
+        tol = 1e-04
+        # tol = 100
         if np.isclose(smallest_diff, 0, rtol=1, atol=tol, equal_nan=False):
             # print(smallest_diff)
             # print('ja nice!')
@@ -141,20 +151,40 @@ def iter_angle(last_angle, img, view, yellow, blue):
             # print(ransac_rwarp_yellow)
             # quit()
             # print(yellow)
-            slope_y_rwarp, intercept_y_rwarp, ransac_rwarp_yellow = my_ransac(yellow, True)
-            slope_b_rwarp, intercept_b_rwarp, ransac_rwarp_blue = my_ransac(blue, True)
+            # slope_y_rwarp, intercept_y_rwarp, ransac_rwarp_yellow = my_ransac(yellow, True)
+            # slope_b_rwarp, intercept_b_rwarp, ransac_rwarp_blue = my_ransac(blue, True)
+            warped_img = warp_img(img, H)
+            '''
+            yellow_warp = np.where(np.all(warped_img == [0,255,255], axis=-1))
+            blue_warp = np.where(np.all(warped_img == [255,0,0], axis=-1))
+
+            sy2, iy2 = linregress(yellow_warp[0], yellow_warp[1])[:2]
+            sb2, ib2 = linregress(blue_warp[0], blue_warp[1])[:2]
+            print((sy2,iy2))
+            print(warped_img.shape)
+            print((intercept_y,slope_y))
+            print((intercept_b,slope_b))
+            warped_img = cv.line(warped_img, pt1=(np.int32(iy2), 0), pt2=(np.int32(sy2*warped_img.shape[0] + iy2), warped_img.shape[0]), color=(0,255,0))
+            warped_img = cv.line(warped_img, pt1=(np.int32(ib2), 0), pt2=(np.int32(sb2*warped_img.shape[0] + ib2), warped_img.shape[0]), color=(255,0,0))
+            '''
+
+            # quit()
+            # warped_img = cv.line(warped_img, pt1=(np.int32(intercept_y), 0), pt2=(np.int32(slope_y*warped_img.shape[0] + intercept_y), warped_img.shape[0]), color=(0,255,0))
+            # warped_img = cv.line(warped_img, pt1=(np.int32(intercept_b), 0), pt2=(np.int32(slope_b*warped_img.shape[0] + intercept_b), warped_img.shape[0]), color=(255,0,0))
+            cv.imwrite('schaunwirmal6.png', warped_img)
+            # quit()
             # _, _, ransac_rwarp_blue = my_ransac(blue, True)
             # print(img.shape)
             # print(intercept_y_rwarp)
-            img = cv.line(img, pt1=(np.int32(intercept_y_rwarp), 0), pt2=(np.int32(slope_y_rwarp*img.shape[0] + intercept_y_rwarp), img.shape[0]), color=(0,255,0), thickness=5)
-            img = cv.line(img, pt1=(np.int32(intercept_b_rwarp), 0), pt2=(np.int32(slope_b_rwarp*img.shape[0] + intercept_b_rwarp), img.shape[0]), color=(255,0,0), thickness=5)
+            # img = cv.line(img, pt1=(np.int32(intercept_y_rwarp), 0), pt2=(np.int32(slope_y_rwarp*img.shape[0] + intercept_y_rwarp), img.shape[0]), color=(0,255,0), thickness=5)
+            # img = cv.line(img, pt1=(np.int32(intercept_b_rwarp), 0), pt2=(np.int32(slope_b_rwarp*img.shape[0] + intercept_b_rwarp), img.shape[0]), color=(255,0,0), thickness=5)
 
 
 
-            ransac_rwarp_yellow = np.int32(ransac_rwarp_yellow)
-            ransac_rwarp_blue = np.int32(ransac_rwarp_blue)
+            # ransac_rwarp_yellow = np.int32(ransac_rwarp_yellow)
+            # ransac_rwarp_blue = np.int32(ransac_rwarp_blue)
 
-            print(ransac_rwarp_yellow)
+            # print(ransac_rwarp_yellow)
             # print(ransac_rwarp_yellow.shape)
             # quit()
             # for x,y in zip(ransac_rwarp_yellow[0], ransac_rwarp_yellow[1]):
@@ -164,8 +194,9 @@ def iter_angle(last_angle, img, view, yellow, blue):
             # cv.line(img, (ransac_rwarp_yellow[1][0], ransac_rwarp_yellow[0][0]), (ransac_rwarp_yellow[1][-1], ransac_rwarp_yellow[0][-1]), (0,255,0), 5)
             # cv.line(img, (ransac_rwarp_blue[0][1], ransac_rwarp_blue[0][0]), (ransac_rwarp_blue[-1][0], ransac_rwarp_blue[-1][1]), (255,0,0), 5)
 
-
-            return img, angle_guess, True
+            cv.putText(warped_img, 'Pitch Angle: %s'%(np.degrees(angle)), (10, 1650), font, 0.5, (255, 255, 0), 2, cv.LINE_AA)
+            cv.putText(warped_img, 'Smallest diff: %s'%(smallest_diff), (10, 1670), font, 0.5, (255, 255, 0), 2, cv.LINE_AA)
+            return warped_img, angle_guess, True
 
         cnt += 1
     return warped_img, angle_guess, False
@@ -303,7 +334,7 @@ if __name__ == '__main__':
     # rotate image by specified roll angle
 
 
-    marked_img, retval = mark_lanes(img, -roll_angle*2)
+    marked_img, retval = mark_lanes(img, -roll_angle)
     # print(retval)
-    # warped_img, angle = birdview(marked_img, False, None)
+    warped_img, angle, found = birdview(marked_img, False, None)
     # cv.imwrite('aha.png', warped_img)
