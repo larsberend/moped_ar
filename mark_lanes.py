@@ -17,45 +17,49 @@ def mark_lanes(img, roll_angle):
     # img = rotate_image(img, roll_angle)
     roll_angle = np.degrees(roll_angle)
     img = skimage.transform.rotate(img, -roll_angle, clip=True, preserve_range=True).astype(np.uint8)
+    imshape = img.shape
+    top_left = [0, 2*imshape[0]/3]
+    # top_left = [imshape[1]/3, 2*imshape[0]/3]
+    top_right = [3*imshape[1]/6, 2*imshape[0]/3]
+    lower_left = [0,imshape[0]]
+    # lower_left = [imshape[1]/9,imshape[0]]
+    lower_right = [imshape[1],imshape[0]]
+
+    vertices = [np.array([lower_left,top_left,top_right,lower_right],dtype=np.int32)]
+    # print(vertices)
+    roi_image = region_of_interest(img, vertices)
     # print(img.dtype)
 
-    cv.imwrite('schaunwirmal.png', img)
+    cv.imwrite('schaunwirmal.png', roi_image)
 
-    gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    gray = cv.cvtColor(roi_image, cv.COLOR_BGR2GRAY)
     kernel_size = 11
     gauss_gray = cv.GaussianBlur(gray, (kernel_size,kernel_size), 0)
-    # cv.imwrite('schaunwirmal1.png', gauss_gray)
-    mask_white = cv.inRange(gauss_gray, 220, 255)
-    mask_w_image = cv.bitwise_and(gauss_gray, mask_white)
-    cv.imwrite('schaunwirmal1.png', gauss_gray)
-    # kernel_size = 5
-    # gauss_gray = cv.GaussianBlur(mask_w_image, (kernel_size,kernel_size), 0)
+    cv.imwrite('schaunwirmal0.png', gauss_gray)
     low_threshold = 50
     high_threshold = 150
     aperture_size = 500
-    canny_edges = cv.Canny(mask_w_image,low_threshold,high_threshold, aperture_size)
+    canny_edges = cv.Canny(gauss_gray,low_threshold,high_threshold, aperture_size)
+    cv.imwrite('schaunwirmal1.png', canny_edges)
+
+    mask_white = cv.inRange(canny_edges, 230, 255)
+    mask_w_image = cv.bitwise_and(gauss_gray, mask_white)
+    mask_w_image[mask_w_image<160] = 0
+    # mask_w_image = cv.bitwise_and(canny_edges, mask_white)
+    # kernel_size = 5
+    # gauss_gray = cv.GaussianBlur(mask_w_image, (kernel_size,kernel_size), 0)
 
     cv.imwrite('schaunwirmal2.png', mask_w_image)
 
 
-    imshape = img.shape
-    lower_left = [0,imshape[0]]
-    # lower_left = [imshape[1]/9,imshape[0]]
-    lower_right = [imshape[1],imshape[0]]
 
     # if roll_angle < 0:
     #     top_left = [imshape[1]/4, 2*imshape[0]/3]
     #     top_right = [5*imshape[1]/6, 2*imshape[0]/3]
     # else:
-    top_left = [imshape[1]/3, 2*imshape[0]/3]
-    top_right = [3*imshape[1]/6, 2*imshape[0]/3]
-
-    vertices = [np.array([lower_left,top_left,top_right,lower_right],dtype=np.int32)]
-    # print(vertices)
-    roi_image = region_of_interest(canny_edges, vertices)
     # print(np.array_equal(roi_image, canny_edges))
 
-    cv.imwrite('schaunwirmal3.png', roi_image)
+    # cv.imwrite('schaunwirmal3.png', roi_image)
 
     #rho and theta are the distance and angular resolution of the grid in Hough space
     #same values as quiz
@@ -66,7 +70,7 @@ def mark_lanes(img, roll_angle):
     min_line_len = 50
     max_line_gap = 70
 
-    lines = cv.HoughLinesP(roi_image, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
+    lines = cv.HoughLinesP(mask_w_image, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
     if lines is not None:
 
         # print(lines)
@@ -365,8 +369,8 @@ if __name__ == '__main__':
     # img, roll_angle= cv.imread('./problematic2.png'), 0.171368206765908
     # img, roll_angle= cv.imread('./problematic3.png'), -0.340036930698958
     # img, roll_angle= cv.imread('./problematic4.png'), 0.008977732261967
-    # img, roll_angle= cv.imread('./problematic5.png'), 0.006774174538544
-    img, roll_angle= cv.imread('./problematic7.png'), 0.006774174538544
+    img, roll_angle= cv.imread('./problematic5.png'), 0.006774174538544
+    # img, roll_angle= cv.imread('./problematic7.png'), 0.006774174538544
 
 
 

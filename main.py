@@ -70,7 +70,7 @@ def main():
 
 
             if bv == True:
-                marked_im, retval = mark_lanes(frame, -ori_eul[2])
+                marked_im, hough_im, retval = mark_lanes(frame, -ori_eul[2])
                 bird_im = np.zeros((frame.shape[1], frame.shape[0], 3))
                 if retval:
                     bird_im, angle_calc, found = birdview(marked_im, False, angle_calc)
@@ -86,6 +86,7 @@ def main():
                     pitch_angle[frame_nr_int] = mil, None
                 cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_birdview/%s.png'%(file, frame_nr_int), bird_im)
                 cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_marked/%s.png'%(file, frame_nr_int), marked_im)
+                cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_hough/%s.png'%(file, frame_nr_int), hough_im)
                 cv.imshow(file, marked_im)
                 print(frame_nr_int)
 

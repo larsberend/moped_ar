@@ -334,7 +334,7 @@ if __name__ == '__main__':
     # rotate image by specified roll angle
 
 
-    marked_img, retval = mark_lanes(img, -roll_angle)
+    marked_img, houg_im, retval = mark_lanes(img, -roll_angle)
     # print(retval)
     warped_img, angle, found = birdview(marked_img, False, None)
     # cv.imwrite('aha.png', warped_img)
