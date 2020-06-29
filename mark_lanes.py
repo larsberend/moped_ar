@@ -25,30 +25,30 @@ def mark_lanes(img, roll_angle):
     kernel_size = 11
     gauss_gray = cv.GaussianBlur(gray, (kernel_size,kernel_size), 0)
     # cv.imwrite('schaunwirmal1.png', gauss_gray)
-    mask_white = cv.inRange(gauss_gray, 230, 255)
+    mask_white = cv.inRange(gauss_gray, 220, 255)
     mask_w_image = cv.bitwise_and(gauss_gray, mask_white)
-    cv.imwrite('schaunwirmal2.png', gauss_gray)
+    cv.imwrite('schaunwirmal1.png', gauss_gray)
     # kernel_size = 5
     # gauss_gray = cv.GaussianBlur(mask_w_image, (kernel_size,kernel_size), 0)
-
-    # cv.imwrite('schaunwirmal2.png', mask_w_image)
-
     low_threshold = 50
     high_threshold = 150
-    aperture_size = 1000
+    aperture_size = 500
     canny_edges = cv.Canny(mask_w_image,low_threshold,high_threshold, aperture_size)
+
+    cv.imwrite('schaunwirmal2.png', mask_w_image)
+
 
     imshape = img.shape
     lower_left = [0,imshape[0]]
     # lower_left = [imshape[1]/9,imshape[0]]
     lower_right = [imshape[1],imshape[0]]
 
-    if roll_angle < 0:
-        top_left = [imshape[1]/4, 2*imshape[0]/3]
-        top_right = [5*imshape[1]/6, 2*imshape[0]/3]
-    else:
-        top_left = [imshape[1]/3, 2*imshape[0]/3]
-        top_right = [3*imshape[1]/6, 2*imshape[0]/3]
+    # if roll_angle < 0:
+    #     top_left = [imshape[1]/4, 2*imshape[0]/3]
+    #     top_right = [5*imshape[1]/6, 2*imshape[0]/3]
+    # else:
+    top_left = [imshape[1]/3, 2*imshape[0]/3]
+    top_right = [3*imshape[1]/6, 2*imshape[0]/3]
 
     vertices = [np.array([lower_left,top_left,top_right,lower_right],dtype=np.int32)]
     # print(vertices)
@@ -149,10 +149,11 @@ def mark_lanes(img, roll_angle):
             slope_y, intercept_y, ransac_y = my_ransac(line_points_y, True)
             slope_b, intercept_b, ransac_b = my_ransac(line_points_b, True)
             print((slope_y,slope_b))
+            # print(ransac_y)
             img[ransac_b[1], ransac_b[0]] = [255,0,0]
             img[ransac_y[1], ransac_y[0]] = [0,255,255]
             cv.imwrite('schaunwirmal5.png', img)
-            return img, True
+            return img, hough_img, True
             # quit()
             # print(line_points)
             # img[line_points[:,1], line_points[:,0]] = [255,0,0]
@@ -202,7 +203,7 @@ def mark_lanes(img, roll_angle):
                 cv.imwrite('schaunwirmal5.png', weighted_img)
                 return weighted_img, True
                 '''
-    return img, False
+    return img, np.zeros_like(img), False
 
 
 def my_ransac(warped_p, return_points):
@@ -213,18 +214,22 @@ def my_ransac(warped_p, return_points):
 
     ransac.fit(warped_p[:,0].reshape(-1, 1), warped_p[:,1])
 
-    ransacX = np.arange(min(warped_p[:,0]), max(warped_p[:,0]))
-    line_ransac = ransac.predict(ransacX.reshape(-1, 1))
+    ransacX = np.arange(min(warped_p[:,0]), max(warped_p[:,0]), dtype=np.int64)
+    line_ransac = ransac.predict(ransacX.reshape(-1, 1)).astype(np.int64)
 
-    ransacX = ransacX[line_ransac < 1920]
-    line_ransac = line_ransac[line_ransac < 1920]
+    ransacX = ransacX[line_ransac < 1080]
+    line_ransac = line_ransac[line_ransac < 1080]
     ransacX = ransacX[line_ransac >= 0]
     line_ransac = line_ransac[line_ransac >= 0]
+    line_ransac = line_ransac[ransacX >= 0]
+    ransacX = ransacX[ransacX >= 0]
+    line_ransac = line_ransac[ransacX < 1920]
+    ransacX = ransacX[ransacX < 1920]
 
     slope, intercept = linregress(ransacX, line_ransac)[:2]
     # print(slope)
     if return_points:
-        return slope, intercept, (ransacX.astype(np.int64), line_ransac.astype(np.int64))
+        return slope, intercept, (ransacX, line_ransac)
     else:
         return slope, intercept
 
@@ -356,12 +361,17 @@ def rotate_image(image, angle):
   return result
 
 if __name__ == '__main__':
-    img, roll_angle= cv.imread('./problematic.png'), 0.298919415637517
+    # img, roll_angle= cv.imread('./problematic.png'), 0.298919415637517
     # img, roll_angle= cv.imread('./problematic2.png'), 0.171368206765908
     # img, roll_angle= cv.imread('./problematic3.png'), -0.340036930698958
+    # img, roll_angle= cv.imread('./problematic4.png'), 0.008977732261967
+    # img, roll_angle= cv.imread('./problematic5.png'), 0.006774174538544
+    img, roll_angle= cv.imread('./problematic7.png'), 0.006774174538544
+
+
 
     # rotate image by specified roll angle
 
 
-    marked_img, retval = mark_lanes(img, -roll_angle)
+    marked_img,hough_im,  retval = mark_lanes(img, -roll_angle)
     # print(retval)
