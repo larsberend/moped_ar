@@ -9,6 +9,7 @@ from draw_curve import draw_curve
 from radius import turn
 import cv2 as cv
 from CMadgwick import CMad
+from angel_from_vis import find_nearest
 
 '''
 Plays frames from a video file and draws trajectory of the motorcycle in each of them.
@@ -70,28 +71,7 @@ def main():
 
 
             if bv == True:
-                marked_im, hough_im, retval = mark_lanes(frame, -ori_eul[2])
-                bird_im = np.zeros((frame.shape[1], frame.shape[0], 3))
-                if retval:
-                    bird_im, angle_calc, found = birdview(marked_im, False, angle_calc)
-                    if found:
-                        # print(angle_calc)
-                        # quit()
-                        pitch_angle[frame_nr_int] = mil, angle_calc
-                        print(np.degrees(angle_calc))
-                    else:
-                        print('No fitting angle found')
-                else:
-                    print('no lines found in image')
-                    pitch_angle[frame_nr_int] = mil, None
-                cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_birdview/%s.png'%(file, frame_nr_int), bird_im)
-                cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_marked/%s.png'%(file, frame_nr_int), marked_im)
-                cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_hough/%s.png'%(file, frame_nr_int), hough_im)
-                cv.imshow(file, marked_im)
-                print(frame_nr_int)
-
-
-
+                pass
             else:
                 # check if Euler conversion returns same Quaternion:
                 # assert np.abs(np.dot(R.from_euler('xyz', ori_eul).as_quat(), ori) - 1) < 0.00001
@@ -140,24 +120,6 @@ def main():
                 # curve_proj=curve_proj[curve_proj[:,0]<1920]
                 # curve_proj=curve_proj[curve_proj[:,1]<1080]
 
-                # rr,cc = bezier_curve(*curve_proj[0], *curve_proj[int(curve_proj.shape[0]/2)], *curve_proj[-1], weight=5)
-                # print((rr,cc))
-                # frame[cc,rr] = 255,255,255
-
-
-                # curve_proj=curve_proj[np.abs(curve_proj[:,0]-960).argsort()]
-                # print(curve_proj)
-                # for l in range(curve_proj.shape[0]-1):
-                #     # print(curve_proj[l])
-                #     rr,cc,val = line_aa(*curve_proj[l], *curve_proj[l+1])
-                #     # print((rr.shape,cc.shape))
-                #     vals = np.full((val.shape[0],3),fill_value = 255)
-                #     vals[:,1] = val*255
-                #
-                #     # print(frame[0,1])
-                #     # print(val.shape)
-                #     frame[cc,rr] = vals
-                #     # quit()
 
 
                 # frame2 = np.zeros_like(frame)
@@ -183,6 +145,7 @@ def main():
 
                 # save every frame as png
                 # cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_processed/%s.png'%(file, frame_nr_int), frame)
+                # print(frame)
                 cv.imshow(file, frame)
             frame_nr_int += 1
         if cv.waitKey(1) & 0xFF == ord('q'):
@@ -195,17 +158,6 @@ def main():
     # When everything done, release the capture
     cap.release()
     cv.destroyAllWindows()
-
-
-# return index of value closest to input vale
-def find_nearest(array, value):
-    array = np.asarray(array)
-    idx = (np.abs(array - value)).argmin()
-    # print(idx)
-    return idx
-
-
-
 
 
 if __name__=='__main__':
