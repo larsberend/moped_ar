@@ -12,7 +12,7 @@ img = cv.imread('./00-08-52-932_points_cut.png')
 # #convert from BGR to RGB
 height, width = img.shape[:2]
 
-img = cv.resize(img, (np.int32(width/4), np.int32(height/4)))
+# img = cv.resize(img, (np.int32(width/4), np.int32(height/4)))
 img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
 fig = plt.figure()
 
@@ -34,8 +34,8 @@ ax1 = fig.add_subplot(111, projection='3d')
 # Y1 = np.arange(-5, 5, stepY)
 # X1 = np.arange(height/4)
 # Y1 = np.arange(width/4)
-X1 = np.arange(-width/8, width/8)
-Y1 = np.arange(-height/8, height/8)
+X1 = np.arange(-width/2, width/2)
+Y1 = np.arange(-height/2, height/2)
 X1, Y1 = np.meshgrid(X1, Y1)
 Z1 = np.zeros_like(X1)
 # stride args allows to determine image quality

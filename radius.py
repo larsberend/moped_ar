@@ -46,7 +46,7 @@ class turn():
 # reads candidate-number from stdin, gets csv-file and extends it with radii,
 # angles and quaternions(from madgwick filter)
 if __name__=='__main__':
-    path = '/mnt/c/Users/bb/Documents/Moped_AR/100GOPRO/kandidaten/csv/'
+    path = '/mnt/c/Users/bb/Documents/Moped_AR/100GOPRO/testfahrt_1006/kandidaten/csv/'
     file = sys.argv[1] + '-'
     test = turn()
     cmad = CMad()

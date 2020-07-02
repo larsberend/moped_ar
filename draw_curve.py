@@ -5,6 +5,9 @@ from skimage.draw import circle_perimeter, line
 import matplotlib.pyplot as plt
 import cv2 as cv
 from cordFrames import get_cordFrames
+from birdview import point_warp, get_homography2
+from scipy.spatial.transform import Rotation as R
+
 '''
 Draws a curve in 2D and projects points to a screen
 
@@ -45,7 +48,7 @@ def get_arc_points(radius, view_dist, factor):
     # print(x_values)
     return x_values , z_values
 
-def draw_curve(radius, cam_frame, fw_frame):
+def draw_curve(radius, cam_frame, fw_frame, pitch):
     # radius = 2
 
     # a radius with a radius of inf/-inf is a line. Here, threshold is 1000m for speed-up
@@ -78,8 +81,10 @@ def draw_curve(radius, cam_frame, fw_frame):
     # print(curve2d)
         pass
         # x, z = np.array(circle_perimeter(np.int(radius*factor), 0, np.abs(np.int(radius*factor))), dtype=np.float64)
-
     x,z = get_arc_points(radius, view_dist, factor)
+
+
+
     if horizon:
         # hori_x, hori_z = line(-100000, 100000, 100000, 100000)
         # print(hori_x)
@@ -90,6 +95,26 @@ def draw_curve(radius, cam_frame, fw_frame):
         z = np.append(z, hori_z)
     # print('hier')
     # extend to 4d (homogeneous) with y = 0, w = 1
+    if pitch is not None:
+
+        # matrices for camera intrinsics
+        pixel_mat = np.array([[1/pu,0,u0], [0,1/pv,v0],[0,0,1]], dtype=np.float64)
+        focal_mat = np.array([[f,0,0],[0,f,0], [0,0,1]], dtype=np.float64)
+
+        # put all together --> camera matrix C
+        K = np.dot(pixel_mat, focal_mat)
+
+        pitch_rot = R.from_euler('xyz', (0, pitch, 0), degrees=False).as_matrix()
+        H = get_homography2(pitch_rot, K)
+        Hinv = np.linalg.inv(H)
+        curve_proj = point_warp((x, z), Hinv, np.zeros((1920, 1800)))
+        print(x.shape)
+        print(z.shape)
+        top = top_view((x,z), 1)
+        curve_proj = np.column_stack((x, z)).astype(np.float64)
+        return curve_proj, top
+
+
     curve4d = np.column_stack((x, np.zeros(x.shape), z, np.ones(x.shape))).astype(np.float64)
     # curve4d = np.column_stack((x/factor, np.zeros(x.shape), z/factor, np.ones(x.shape))).astype(np.float64)
 
@@ -188,14 +213,14 @@ def draw_curve(radius, cam_frame, fw_frame):
 def top_view(curve2d, trans_rot):
     # print(trans_rot)
     # vector in worldframe
-    look_dir = [[0,0,0,1],[0,0,50,1]]
-    homog_look_dir = np.dot(trans_rot, look_dir[0]), np.dot(trans_rot, look_dir[1])
-    cam_z = homog_look_dir[0][0],homog_look_dir[0][2],homog_look_dir[1][0],homog_look_dir[1][2]
+    # look_dir = [[0,0,0,1],[0,0,50,1]]
+    # homog_look_dir = np.dot(trans_rot, look_dir[0]), np.dot(trans_rot, look_dir[1])
+    # cam_z = homog_look_dir[0][0],homog_look_dir[0][2],homog_look_dir[1][0],homog_look_dir[1][2]
 
     my_dpi=96
     fig = plt.figure(figsize=(320/my_dpi, 240/my_dpi), dpi=my_dpi)
     sc = fig.add_subplot(111)
-    sc.arrow(*cam_z, head_width=5, head_length=7, fc='blue',ec='black')
+    # sc.arrow(*cam_z, head_width=5, head_length=7, fc='blue',ec='black')
     sc.scatter(curve2d[0],curve2d[1], marker='x', color='red', label='time in ms')
     sc.set_xlim(-100, 100)
     sc.set_ylim(-100, 100)

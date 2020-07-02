@@ -91,9 +91,12 @@ def get_cordFrames():
                           world_frame=world_frame,
                           parent=fw_frame,
                           children=[],
-                          transToParent=transform(np.array([0, -1.2137, 0], dtype=np.float64),
-                                                  [[np.sin(np.pi/2), 0, 0, np.cos(np.pi/2)],
-                                                  [0, 0, np.sin(np.pi/4),np.cos(np.pi/4)]])
+                          transToParent=transform(np.array([-1.2137,0, 0], dtype=np.float64),
+                                                  [
+                                                  # [np.sin(np.pi/2), 0, 0, np.cos(np.pi/2)],
+                                                  [0, 0, np.sin(np.pi/4),np.cos(np.pi/4)],
+                                                  [np.sin(np.pi/2), 0, 0, np.cos(np.pi/2)]
+                                                  ])
 
                          )
 
@@ -112,7 +115,7 @@ def get_cordFrames():
                           )
 
     # print(world_frame)
-    # print(plane_frame)
+    # print(fw_frame)
     # print(imu_frame)
     # print(cam_frame)
 

@@ -3,11 +3,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
 from scipy.stats import linregress
-from draw_curve import pu,pv,u0,v0,f
 import skimage.transform
 from sklearn.cluster import KMeans
 from sklearn import linear_model
 
+# actual focal length = equivalent focal length / crop factor
+f = np.float64(0.019/5.6)
+
+# sensor size / video resolution
+pu = np.float64(0.0062/1920)
+pv = np.float64(0.0045/1080)
+# central coordinates of video
+u0 = 959
+v0 = 648
 # inspired by https://medium.com/@galen.ballew/opencv-lanedetection-419361364fc0
 def mark_lanes(img, roll_angle):
 

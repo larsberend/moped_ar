@@ -3,10 +3,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
 from scipy.stats import linregress
-from draw_curve import pu,pv,u0,v0,f
 from sklearn.cluster import KMeans
 from sklearn import linear_model
-from mark_lanes import mark_lanes
+from mark_lanes import mark_lanes, pu, pv, u0, v0, f
+import skimage.transform
+from scipy.ndimage import maximum_filter
+
+
 
 font = cv.FONT_HERSHEY_SIMPLEX
 focal_mat = np.array([[f,0,0],[0,f,0], [0,0,1]], dtype=np.float64)
@@ -22,9 +25,8 @@ def birdview(img, view, last_angle):
     # cut image to location of markings
     new_height = np.amin([min(yellow[0]),min(blue[0])])
     new_width = np.amax([max(yellow[1]),max(blue[1])])
-
+    orig_img = img.copy()
     img = img[new_height:, 0:new_width+1]
-
     yellow = np.where(np.all(img == [0,255,255], axis=-1))
     blue = np.where(np.all(img == [255,0,0], axis=-1))
 
@@ -37,24 +39,41 @@ def birdview(img, view, last_angle):
     else:
         warped_img, angle, found = iter_angle(angle, img, view, yellow, blue)
         if found:
-            return warped_img, angle, True
+            fin_rot = R.from_euler('xyz', (0, angle, 0), degrees=False).as_matrix()
+            H = get_homography2(fin_rot, K)
+            cut_to_road = orig_img[int(634):]
+            cv.imwrite('schaunwirmal8.png', cut_to_road)
+            print(cut_to_road.shape)
+            big_warp = warp_img(cut_to_road, H)
+            cv.imwrite('schaunwirmal9.png', big_warp)
+            return big_warp, angle, True
+            # return warped_img, angle, True
 
         else:
             print('No fitting angle found')
+            fin_rot = R.from_euler('xyz', (0, 40, 0), degrees=True).as_matrix()
+            H = get_homography2(fin_rot, K)
+            # cut_to_road = orig_img[int(4*orig_img.shape[0]/8):]
+            cut_to_road = orig_img[int(634):]
+            # cut_to_road = skimage.transform.rotate(cut_to_road, np.degrees(-0.298919415637517), clip=True, preserve_range=True).astype(np.uint8)
+            cv.imwrite('schaunwirmal8.png', cut_to_road)
+            big_warp = warp_img(cut_to_road, H)
+            # big_warp = maximum_filter(big_warp, size=(20,10,3))
+            cv.imwrite('schaunwirmal9.png', big_warp)
             return warped_img, None, False
 
 # calculate birdviews around a certain angle or in range [0, pi/4] if input angle==None
 def iter_angle(last_angle, img, view, yellow, blue):
-    warped_img = np.zeros((img.shape[1], img.shape[0],3))
+    warped_img = np.zeros((img.shape[1], img.shape[0], 3))
     # cnt = 0
     # print(search_grid.shape)
     angle_guess = 0
     smallest_diff = 100
 
     if last_angle is None:
-        search_grid = np.arange(0, np.pi/4, 0.001)
+        search_grid = np.arange(0, np.pi/4, 0.0001)
     else:
-        search_grid = np.arange(last_angle-0.01, last_angle+0.01, 0.0001)
+        search_grid = np.arange(last_angle-0.01, last_angle+0.01, 0.00001)
 
 
     for angle in search_grid:
@@ -97,9 +116,10 @@ def iter_angle(last_angle, img, view, yellow, blue):
             angle_guess = angle
             # print((angle_guess,smallest_diff))
         # check, if diff is smaller than 0.0001
-        tol = 1e-04
+        tol = 1e-05
         if np.isclose(smallest_diff, 0, rtol=1, atol=tol, equal_nan=False):
             # make birdview image and save
+            # print(img.shape)
             warped_img = warp_img(img, H)
             cv.imwrite('schaunwirmal6.png', warped_img)
             cv.putText(warped_img, 'Pitch Angle: %s'%(np.degrees(angle)), (10, 1650), font, 0.5, (255, 255, 0), 2, cv.LINE_AA)
@@ -210,7 +230,8 @@ def warp_img(src, H):
 
 # from Gerhard Roth
 def get_homography2(rot, K):
-    # print(rot)
+    print(rot.shape)
+    print(K.shape)
     KR = np.dot(K, rot)
     # print(KR)
     KRK = np.dot(KR, np.linalg.inv(K))
