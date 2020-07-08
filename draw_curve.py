@@ -30,10 +30,12 @@ u0 = 959
 v0 = 648
 # u0 = 956
 # v0 = 559
-factor = 10 # take 100 points per meter, show 1
-view_dist = 100
+factor = 1 # take 100 points per meter, show 1
+view_dist = 30
+# factor = 10 # take 100 points per meter, show 1
+# view_dist = 100
 
-horizon = True
+horizon = False
 
 def get_arc_points(radius, view_dist, factor):
     # radius = 10
@@ -96,7 +98,7 @@ def draw_curve(radius, cam_frame, fw_frame, pitch):
     # print('hier')
     # extend to 4d (homogeneous) with y = 0, w = 1
     if pitch is not None:
-
+        print((x,z))
         # matrices for camera intrinsics
         pixel_mat = np.array([[1/pu,0,u0], [0,1/pv,v0],[0,0,1]], dtype=np.float64)
         focal_mat = np.array([[f,0,0],[0,f,0], [0,0,1]], dtype=np.float64)
@@ -107,11 +109,11 @@ def draw_curve(radius, cam_frame, fw_frame, pitch):
         pitch_rot = R.from_euler('xyz', (0, pitch, 0), degrees=False).as_matrix()
         H = get_homography2(pitch_rot, K)
         Hinv = np.linalg.inv(H)
-        curve_proj = point_warp((x, z), Hinv, np.zeros((1920, 1800)))
+        curve_proj = point_warp((x, z), Hinv, np.zeros((10000, 10000)))
         print(x.shape)
         print(z.shape)
         top = top_view((x,z), 1)
-        curve_proj = np.column_stack((x, z)).astype(np.float64)
+        curve_proj = np.column_stack((curve_proj[0], -curve_proj[1])).astype(np.float64)
         return curve_proj, top
 
 
@@ -236,5 +238,5 @@ def top_view(curve2d, trans_rot):
 
 if __name__ == '__main__':
     world_frame, fw_frame, cam_frame, imu_frame = get_cordFrames()
-    _, curve2d = draw_curve(-3000, cam_frame, fw_frame)
-    # print(curve2d)
+    curve2d, top = draw_curve(-50, cam_frame, fw_frame, np.radians(80))
+    print(curve2d)

@@ -6,7 +6,10 @@ from scipy.stats import linregress
 import skimage.transform
 from sklearn.cluster import KMeans
 from sklearn import linear_model
+from sklearn.exceptions import ConvergenceWarning
+import warnings
 
+# warnings.filterwarnings('error', category=ConvergenceWarning, module='sklearn')
 # actual focal length = equivalent focal length / crop factor
 f = np.float64(0.019/5.6)
 
@@ -14,8 +17,8 @@ f = np.float64(0.019/5.6)
 pu = np.float64(0.0062/1920)
 pv = np.float64(0.0045/1080)
 # central coordinates of video
-u0 = 959
-v0 = 648
+u0 = 960
+v0 = 540
 # inspired by https://medium.com/@galen.ballew/opencv-lanedetection-419361364fc0
 def mark_lanes(img, roll_angle):
 
@@ -24,10 +27,14 @@ def mark_lanes(img, roll_angle):
     roll_angle = np.degrees(roll_angle)
     img = skimage.transform.rotate(img, -roll_angle, clip=True, preserve_range=True).astype(np.uint8)
     imshape = img.shape
-    top_left = [0, 2*imshape[0]/3]
-    # top_left = [imshape[1]/3, 2*imshape[0]/3]
+    # if np.radians(roll_angle) > 0.2:
+    #     top_left = [1*imshape[1]/2, 2*imshape[0]/3]
+    # else:
+    top_left = [962, 692]
+        # top_left = [imshape[1]/3, 2*imshape[0]/3]
     top_right = [3*imshape[1]/6, 2*imshape[0]/3]
-    lower_left = [0,imshape[0]]
+    lower_left = [0, imshape[0]-100]
+
     # lower_left = [imshape[1]/9,imshape[0]]
     lower_right = [imshape[1],imshape[0]]
 
@@ -71,7 +78,10 @@ def mark_lanes(img, roll_angle):
         # print(klines)
         # print(lines)
         if lines.shape[0] > 2:
-
+        # print(lines.shape)
+        # print(lines)
+        # lines[1] = lines[2]
+        # print(lines)
             slope_arr = np.zeros(len(lines))
 
             for l in range(len(lines)):
@@ -79,65 +89,83 @@ def mark_lanes(img, roll_angle):
                     slope_arr[l] = ((y2-y1)/(x2-x1))
 
             # cluster all hough lines in three clusters by slope
+            # try:
             kmeans2 = KMeans(n_clusters = 3)
+            # except RuntimeWarning:
+            #     kmeans2 = KMeans(n_clusters = 2)
+            #     print('in except')
+            #     pass
+            # print('out ecxcept')
+
             klines = kmeans2.fit_predict(slope_arr.reshape(-1,1))
-            hough_img = img.copy()
+            if np.unique(klines).size > 2:
+                hough_img = img.copy()
+                # print(klines)
+                # if klines
+                # draw all lines with their respective color of cluster in image
+                for l in range(len(lines)):
+                    for x1,y1,x2,y2 in lines[l]:
+                        if klines[l] == 0:
+                            hough_img = cv.line(hough_img, pt1=(x1,y1), pt2=(x2,y2), color=(0,255,0), thickness=3)
+                        elif klines[l] == 1:
+                            hough_img = cv.line(hough_img, pt1=(x1,y1), pt2=(x2,y2), color=(255,0,255), thickness=3)
+                        else:
+                            hough_img = cv.line(hough_img, pt1=(x1,y1), pt2=(x2,y2), color=(255,0,0), thickness=3)
 
-            # draw all lines with their respective color of cluster in image
-            for l in range(len(lines)):
-                for x1,y1,x2,y2 in lines[l]:
-                    if klines[l] == 0:
-                        hough_img = cv.line(hough_img, pt1=(x1,y1), pt2=(x2,y2), color=(0,255,0), thickness=3)
-                    elif klines[l] == 1:
-                        hough_img = cv.line(hough_img, pt1=(x1,y1), pt2=(x2,y2), color=(255,0,255), thickness=3)
-                    else:
-                        hough_img = cv.line(hough_img, pt1=(x1,y1), pt2=(x2,y2), color=(255,0,0), thickness=3)
+                cv.imwrite('schaunwirmal4.png', hough_img)
 
-            cv.imwrite('schaunwirmal4.png', hough_img)
+                lines = lines.reshape((lines.shape[0],2,2))
 
-            lines = lines.reshape((lines.shape[0],2,2))
-
-            # print(slope_arr)
-            # print(klines)
-            # print(lines[klines==0])
-            lines_y = lines[klines==0]
-            lines_b = lines[klines==1]
-            lines_o = lines[klines==2]
+                # print(slope_arr)
+                # print(klines)
+                # print(lines[klines==0])
+                lines_y = lines[klines==0]
+                lines_b = lines[klines==1]
+                # print(lines_b.shape)
+                # print(np.unique(klines).shape)
+                # if np.unique(klines).size > 2:
+                lines_o = lines[klines==2]
+                # else:
+                #     lines_o = [[], []]
 
 
-            # print(lines)
-            # print(lines_y)
-            # print(lines_b)
-            # print(lines[0])
-            line_points_y = connect2(lines_y[0])
-            for ends in lines_y[1:]:
-                line_points_y = np.concatenate((line_points_y, connect2(ends)))
+                # print(lines)
+                # print(lines_y)
+                # print(lines_b)
+                # print(lines[0])
+                line_points_y = connect2(lines_y[0])
+                for ends in lines_y[1:]:
+                    line_points_y = np.concatenate((line_points_y, connect2(ends)))
 
-            line_points_b = connect2(lines_b[0])
-            for ends in lines_b[1:]:
-                line_points_b = np.concatenate((line_points_b, connect2(ends)))
+                line_points_b = connect2(lines_b[0])
+                for ends in lines_b[1:]:
+                    line_points_b = np.concatenate((line_points_b, connect2(ends)))
 
-            line_points_o = connect2(lines_o[0])
-            for ends in lines_o[1:]:
-                line_points_o = np.concatenate((line_points_o, connect2(ends)))
+                line_points_o = connect2(lines_o[0])
+                for ends in lines_o[1:]:
+                    line_points_o = np.concatenate((line_points_o, connect2(ends)))
 
-            lines_list = [line_points_y, line_points_b, lines_o]
-            sort_lines = sorted(lines_list, key=np.size)
-            lines_points_y = sort_lines[0]
-            lines_points_b = sort_lines[1]
+                lines_list = [line_points_y, line_points_b, lines_o]
+                sort_lines = sorted(lines_list, key=np.size)
+                lines_points_y = sort_lines[0]
+                lines_points_b = sort_lines[1]
 
-            slope_y, intercept_y, ransac_y = my_ransac(line_points_y, True)
-            slope_b, intercept_b, ransac_b = my_ransac(line_points_b, True)
-            print("Initial slope of the two clusters of lines selected:")
-            print((slope_y,slope_b))
-            # print(ransac_y)
-            img[ransac_b[1], ransac_b[0]] = [255,0,0]
-            img[ransac_y[1], ransac_y[0]] = [0,255,255]
-            cv.imwrite('schaunwirmal5.png', img)
-            return img, hough_img, True
+                slope_y, intercept_y, ransac_y = my_ransac(line_points_y, True)
+                slope_b, intercept_b, ransac_b = my_ransac(line_points_b, True)
+                print("Initial slope of the two clusters of lines selected:")
+                print((slope_y,slope_b))
+                # print(ransac_y)
+                img[ransac_b[1], ransac_b[0]] = [255,0,0]
+                img[ransac_y[1], ransac_y[0]] = [0,255,255]
+                cv.imwrite('schaunwirmal5.png', img)
+
+                
+
+
+                return img, hough_img, True
     # if not at least 3 lines are found in image, return False
-    else:
-        return img, np.zeros_like(img), False
+
+    return img, np.zeros_like(img), False
 
 # calculate ONE line from cluster using ransac and regression
 # return either slope and intercept or corresponding points in image
@@ -276,13 +304,14 @@ if __name__ == '__main__':
     # img, roll_angle= cv.imread('./problematic3.png'), -0.340036930698958
     # img, roll_angle= cv.imread('./problematic4.png'), 0.008977732261967
     # img, roll_angle= cv.imread('./problematic5.png'), 0.006774174538544
-    img, roll_angle= cv.imread('./problematic6.png'), 0
-    # img, roll_angle= cv.imread('./problematic7.png'), 0.006774174538544
+    img, roll_angle= cv.imread('./problematic6.png'), 0.164914878690494
+
+
 
 
 
     # rotate image by specified roll angle
 
 
-    marked_img,hough_im,  retval = mark_lanes(img, -roll_angle)
-    # print(retval)
+    marked_img, hough_im, retval = mark_lanes(img, -roll_angle)
+    print(retval)

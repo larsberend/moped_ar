@@ -4,6 +4,7 @@ from birdview import birdview
 from mark_lanes import mark_lanes
 from cordFrames import cordFrame, worldFrame, transform, get_cordFrames
 from scipy.spatial.transform import Rotation as R # quaternion in scalar-last
+from scipy.stats import linregress
 from skimage.draw import circle_perimeter, line_aa, bezier_curve
 from draw_curve import draw_curve
 from radius import turn
@@ -22,7 +23,7 @@ def angle_from_vis():
     csv_path = '../100GOPRO/testfahrt_1006/kandidaten/csv/'
     video_path = '../100GOPRO/testfahrt_1006/kandidaten/'
     file = '3_2'
-    start_msec = 000.0
+    start_msec = 4111.0
     font = cv.FONT_HERSHEY_SIMPLEX
 
 
@@ -68,15 +69,37 @@ def angle_from_vis():
                     # quit()
                     pitch_angles[frame_nr_int] = mil, angle_calc
                     print(np.degrees(angle_calc))
+
+                    yellow_warp = np.where(np.all(bird_im == [0,255,255], axis=-1))
+                    blue_warp = np.where(np.all(bird_im == [255,0,0], axis=-1))
+                    if blue_warp[0].size > 0 and yellow_warp[0].size > 0:
+
+                        slope_y, intercept_y = linregress(yellow_warp[1], yellow_warp[0])[:2]
+                        slope_b, intercept_b = linregress(blue_warp[1], blue_warp[0])[:2]
+                        print((slope_y, slope_b))
+                        road_mark_distance = dist(slope_y, intercept_y, intercept_b)
+                        print('mark distance:')
+                        print(road_mark_distance)
+                        pixel_meter = road_mark_distance / 3
+                        fw_point = (5000, 2000)
+                        radius_pixel = radius * pixel_meter
+                        print(radius_pixel)
+                        perimeter = circle_perimeter(fw_point[0], np.int64(fw_point[1] - radius_pixel), np.int64(radius_pixel), shape = bird_im.shape)
+
+                        bird_im[perimeter] = [0,255,0]
+
+
+
                 else:
-                    print('No fitting angle found')
+                    print('No fitting angle found. Best guess:')
+                    print(angle_calc)
             else:
                 print('no lines found in image')
                 pitch_angles[frame_nr_int] = mil, None
 
-            cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_birdview/%s.png'%(file, frame_nr_int), bird_im)
-            cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_marked/%s.png'%(file, frame_nr_int), marked_im)
-            cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_hough/%s.png'%(file, frame_nr_int), hough_im)
+            cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_birdview_2/%s.png'%(file, frame_nr_int), bird_im)
+            cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_marked_2/%s.png'%(file, frame_nr_int), marked_im)
+            cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_hough_2/%s.png'%(file, frame_nr_int), hough_im)
             # print(marked_im.shape)
             cv.imshow(file, marked_im)
             print(frame_nr_int)
@@ -99,6 +122,10 @@ def find_nearest(array, value):
     idx = (np.abs(array - value)).argmin()
     # print(idx)
     return idx
+
+def dist(m, b1, b2):
+    d = np.abs(b2 - b1) / (np.sqrt(m ** 2) + 1);
+    return d
 
 if __name__=='__main__':
     angle_from_vis()
