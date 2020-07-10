@@ -42,6 +42,10 @@ def angle_from_vis():
     while(cap.isOpened()):
         # capture frame-by-frame
         ret, frame = cap.read()
+
+        frame = cv.imread('./problematic3.png')
+
+
         if ret:
             height,width = frame.shape[:2]
             # find closest Datapoint in time to current frame
@@ -57,13 +61,14 @@ def angle_from_vis():
             ori_eul = R.from_quat(ori).as_euler('xyz',degrees=False)
 
             # first step: color 2 lines belonging to road markings in video
-            marked_im, hough_im, retval = mark_lanes(frame, -ori_eul[2])
+            # marked_im, hough_im, retval = mark_lanes(frame, -ori_eul[2])
+            marked_im, hough_im, retval = mark_lanes(frame, 0.340036930698958)
             bird_im = np.zeros((frame.shape[1], frame.shape[0], 3))
 
             # if coloring worked, find angle via iterating over a transform
             # closing in on a birdview (==> road markings parallel)
             if retval:
-                bird_im, angle_calc, found, slope, inter1, inter2 = birdview(marked_im, False, angle_calc)
+                bird_im, angle_calc, found, slope, inter1, inter2, yellow_warp, blue_warp, cam_origin = birdview(marked_im, False, angle_calc)
                 if found:
                     # print(angle_calc)
                     # quit()
@@ -81,13 +86,49 @@ def angle_from_vis():
                     print('mark distance:')
                     print(road_mark_distance)
                     pixel_meter = road_mark_distance / 3
-                    fw_point = (5000, 2000)
+                    # fw_point = cam_origin[1], cam_origin[0]
+                    fw_point = cam_origin
+                    print(pixel_meter)
                     radius_pixel = radius * pixel_meter
                     print(radius_pixel)
-                    perimeter = circle_perimeter(fw_point[0], np.int64(fw_point[1] - radius_pixel), np.int64(radius_pixel), shape = bird_im.shape)
+                    print('slope:')
+                    print(slope)
+                    perp_slope = -1/slope
+                    # perp_slope = slope
+                    # bird_im = cv.line(bird_im, pt1=(np.int32(fw_point[1]), fw_point[0]), pt2=(0, np.int32(-slope*bird_im.shape[0] - fw_point[1])), color=(0,255,0))
+                    # warped_img = cv.line(warped_img, pt1=(np.int32(intercept_y), 0), pt2=(np.int32(slope_y*warped_img.shape[0] + intercept_y), warped_img.shape[0]), color=(0,255,0))
+                    print(perp_slope)
+                    circle_center = (fw_point[1] + dx(radius_pixel, slope), fw_point[0] + dy(radius_pixel, slope))
+                    other_possible_circle_center = (fw_point[1] - dx(radius_pixel, slope), fw_point[0] - dy(radius_pixel, slope)) # going the other way
+                    print(circle_center)
+                    print(other_possible_circle_center)
 
-                    bird_im[perimeter] = [0,255,0]
-                    # quit()
+
+                    circle_center = (fw_point[1] + dx(radius_pixel, perp_slope), fw_point[0] + dy(radius_pixel, perp_slope))
+                    other_possible_circle_center = (fw_point[0] - dx(radius_pixel, perp_slope), fw_point[1] - dy(radius_pixel, perp_slope)) # going the other way
+
+                    print(circle_center)
+                    print(other_possible_circle_center)
+                    # bird_im = cv.line(bird_im, pt1=(np.int32(fw_point[1]), fw_point[0]), pt2=(np.int32(circle_center[1]), np.int32(circle_center[0])), color=(0,255,0))
+                    print(fw_point)
+                    rr,cc = circle_perimeter(np.int64(other_possible_circle_center[0]), np.int64(other_possible_circle_center[1]), np.int64(radius_pixel), shape = bird_im.shape)
+                    # perimeter = circle_perimeter(fw_point[0], np.int64(fw_point[1] - radius_pixel), np.int64(radius_pixel), shape = bird_im.shape)
+                    # print(perimeter[0].shape)
+                    # print(perimeter)
+                    bird_im[rr,cc] = [0,0,255]
+                    rr[rr>3996] = 0
+                    rr[rr<4] = 0
+                    cc[cc>3996] = 0
+                    cc[cc<4] = 0
+
+                    bird_im[rr+1, cc+1] = [0,0,255]
+                    bird_im[rr+2, cc+2] = [0,0,255]
+                    bird_im[rr-1, cc-1] = [0,0,255]
+                    bird_im[rr-2, cc-2] = [0,0,255]
+
+
+                    cv.imwrite('finally.png', bird_im)
+                    quit()
 
 
                 else:
@@ -124,8 +165,15 @@ def find_nearest(array, value):
     return idx
 
 def dist(m, b1, b2):
-    d = np.abs(b2 - b1) / (np.sqrt(m ** 2) + 1);
+    d = np.abs(b2 - b1) / (np.sqrt(m ** 2 + 1));
     return d
+
+
+def dy(distance, m):
+    return m*dx(distance, m)
+
+def dx(distance, m):
+    return distance * np.sqrt(1/(m**2+1))
 
 if __name__=='__main__':
     angle_from_vis()
