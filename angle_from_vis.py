@@ -23,7 +23,7 @@ def angle_from_vis():
     csv_path = '../100GOPRO/testfahrt_1006/kandidaten/csv/'
     video_path = '../100GOPRO/testfahrt_1006/kandidaten/'
     file = '3_2'
-    start_msec = 4111.0
+    start_msec = 4160.0
     font = cv.FONT_HERSHEY_SIMPLEX
 
 
@@ -63,31 +63,31 @@ def angle_from_vis():
             # if coloring worked, find angle via iterating over a transform
             # closing in on a birdview (==> road markings parallel)
             if retval:
-                bird_im, angle_calc, found = birdview(marked_im, False, angle_calc)
+                bird_im, angle_calc, found, slope, inter1, inter2 = birdview(marked_im, False, angle_calc)
                 if found:
                     # print(angle_calc)
                     # quit()
                     pitch_angles[frame_nr_int] = mil, angle_calc
                     print(np.degrees(angle_calc))
 
-                    yellow_warp = np.where(np.all(bird_im == [0,255,255], axis=-1))
-                    blue_warp = np.where(np.all(bird_im == [255,0,0], axis=-1))
-                    if blue_warp[0].size > 0 and yellow_warp[0].size > 0:
+                    # yellow_warp = np.where(np.all(bird_im == [0,255,255], axis=-1))
+                    # blue_warp = np.where(np.all(bird_im == [255,0,0], axis=-1))
+                    # if blue_warp[0].size > 0 and yellow_warp[0].size > 0:
 
-                        slope_y, intercept_y = linregress(yellow_warp[1], yellow_warp[0])[:2]
-                        slope_b, intercept_b = linregress(blue_warp[1], blue_warp[0])[:2]
-                        print((slope_y, slope_b))
-                        road_mark_distance = dist(slope_y, intercept_y, intercept_b)
-                        print('mark distance:')
-                        print(road_mark_distance)
-                        pixel_meter = road_mark_distance / 3
-                        fw_point = (5000, 2000)
-                        radius_pixel = radius * pixel_meter
-                        print(radius_pixel)
-                        perimeter = circle_perimeter(fw_point[0], np.int64(fw_point[1] - radius_pixel), np.int64(radius_pixel), shape = bird_im.shape)
+                        # slope_y, intercept_y = linregress(yellow_warp[1], yellow_warp[0])[:2]
+                        # slope_b, intercept_b = linregress(blue_warp[1], blue_warp[0])[:2]
+                    print((slope, inter1, inter2))
+                    road_mark_distance = dist(slope, inter1, inter2)
+                    print('mark distance:')
+                    print(road_mark_distance)
+                    pixel_meter = road_mark_distance / 3
+                    fw_point = (5000, 2000)
+                    radius_pixel = radius * pixel_meter
+                    print(radius_pixel)
+                    perimeter = circle_perimeter(fw_point[0], np.int64(fw_point[1] - radius_pixel), np.int64(radius_pixel), shape = bird_im.shape)
 
-                        bird_im[perimeter] = [0,255,0]
-
+                    bird_im[perimeter] = [0,255,0]
+                    # quit()
 
 
                 else:

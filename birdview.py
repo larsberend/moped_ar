@@ -20,18 +20,20 @@ K = np.dot(pixel_mat, focal_mat)
 def birdview(img, view, last_angle):
 
     # # find points on lane markings in image
-    yellow = np.where(np.all(img == [0,255,255], axis=-1))
-    blue = np.where(np.all(img == [255,0,0], axis=-1))
+    # yellow = np.where(np.all(img == [0,255,255], axis=-1))
+    # blue = np.where(np.all(img == [255,0,0], axis=-1))
     # cut image to location of markings
-    new_height = np.amin([min(yellow[0]),min(blue[0])])
-    new_width = np.amax([max(yellow[1]),max(blue[1])])
+    # new_height = np.amin([min(yellow[0]),min(blue[0])])
+    # new_width = np.amax([max(yellow[1]),max(blue[1])])
     orig_img = img.copy()
-    img = img[new_height:, 0:new_width+1]
+    # img = img[new_height:, 0:new_width+1]
+    cut_to_road = orig_img[int(630):]
+    img = cut_to_road
+
+
     yellow = np.where(np.all(img == [0,255,255], axis=-1))
     blue = np.where(np.all(img == [255,0,0], axis=-1))
 
-    cut_to_road = orig_img[int(630):]
-    img = cut_to_road
     warped_img, angle, found, slope, inter1, inter2 = iter_angle(last_angle, cut_to_road, view, yellow, blue)
 
     # check if an angle was found
@@ -63,13 +65,16 @@ def birdview(img, view, last_angle):
 # calculate birdviews around a certain angle or in range [0, pi/4] if input angle==None
 def iter_angle(last_angle, img, view, yellow, blue):
     warped_img = np.zeros((img.shape[1], img.shape[0], 3))
+    # print(img.shape)
+    # quit()
     cnt = 0
     # print(search_grid.shape)
     angle_guess = 0
     smallest_diff = 100
     slope_y, slope_b, intercept_y, intercept_b = None, None, None, None
     if last_angle is None:
-        search_grid = np.arange(np.radians(30), np.radians(50), np.radians(0.1))
+        # search_grid = np.arange(np.radians(90), np.radians(361), np.radians(1))
+        search_grid = np.arange(np.radians(30), np.radians(43), np.radians(0.1))
     else:
         search_grid = np.arange(last_angle-0.1, last_angle+0.1, 0.00001)
 
@@ -86,18 +91,21 @@ def iter_angle(last_angle, img, view, yellow, blue):
 
 
 
-        angle = 0.6626151157573931
         # angle = 0
+        # angle = 0.6626151157573931
+        # angle = 0.7
+        # angle = 0.758468224617082
 
 
 
         rot = R.from_euler('xyz', (0, angle, 0), degrees=False).as_matrix()
         H = get_homography2(rot, K)
-
         if view:
             # angle = 0.2
-            warped_img = warp_img(img, H, angle, inv=False)
-            warped_img = warp_img(img, H, angle, inv=True)
+            # warped_img = warp_img(img, H, angle, inv=False)
+            warped_img = warp_img(img, H, angle_guess, True, yellow, blue)
+            # plt.savefig('warp_plots/%s.png'%(cnt))
+            plt.close()
             # quit()
             # warped_img = warp_img(img, H)
             # yellow_warp = np.where(np.all(warped_img == [0,255,255], axis=-1))
@@ -119,13 +127,22 @@ def iter_angle(last_angle, img, view, yellow, blue):
             cnt += 1
             # quit()
         else:
-            yellow_warp = point_warp(yellow, H, img)
-            blue_warp = point_warp(blue, H, img)
+            yellow_minus = np.float64((yellow[0] - img.shape[0]/2, yellow[1] - img.shape[1]/2))
+            blue_minus = np.float64((blue[0] - img.shape[0]/2, blue[1] - img.shape[1]/2))
+            yellow_warp = point_warp(yellow_minus, H, img)
+            blue_warp = point_warp(blue_minus, H, img)
 
+
+            # yellow_warp = point_warp(yellow, H, img)
+            # blue_warp = point_warp(blue, H, img)
+
+            # slope_y, intercept_y = linregress(yellow_warp[1], yellow_warp[0])[:2]
+            # slope_b, intercept_b = linregress(blue_warp[1], blue_warp[0])[:2]
             slope_y, intercept_y = linregress(yellow_warp)[:2]
             slope_b, intercept_b = linregress(blue_warp)[:2]
 
             # print((slope_y, slope_b))
+            # print(angle)
             # if sopes are equal, lines parallel in birdview.
             # get best guess for angle
             diff = np.abs(slope_b-slope_y)
@@ -138,18 +155,18 @@ def iter_angle(last_angle, img, view, yellow, blue):
 
 
 
-            if True:
+            # if True:
 
 
 
-            # if np.isclose(smallest_diff, 0, rtol=1, atol=tol, equal_nan=False):
+            if np.isclose(smallest_diff, 0, rtol=1, atol=tol, equal_nan=False):
                 # make birdview image and save
                 # print(img.shape)
                 print('here')
                 print(angle_guess)
                 print(smallest_diff)
                 # warped_img = warp_img(img, H, angle_guess, False)
-                warped_img = warp_img(img, H, angle_guess, True)
+                warped_img = warp_img(img, H, angle_guess, True, yellow, blue)
                 cv.imwrite('schaunwirmal6.png', warped_img)
                 cv.putText(warped_img, 'Pitch Angle: %s'%(np.degrees(angle)), (10, 1650), font, 0.5, (255, 255, 0), 2, cv.LINE_AA)
                 cv.putText(warped_img, 'Smallest diff: %s'%(smallest_diff), (10, 1670), font, 0.5, (255, 255, 0), 2, cv.LINE_AA)
@@ -158,7 +175,7 @@ def iter_angle(last_angle, img, view, yellow, blue):
     # quit()
     return warped_img, angle_guess, False, slope_b, intercept_y, intercept_b
 
-
+'''
 def my_ransac(warped_p, return_points):
     ransac = linear_model.RANSACRegressor()
     # pass x as y values and vice versa to avoid infinite slope
@@ -170,25 +187,25 @@ def my_ransac(warped_p, return_points):
         return slope, intercept, (warped_p[0], line_ransac)
     else:
         return slope, intercept
-
+'''
 # warp points with specified Homography
 def point_warp(points, H, img):
     X, Y = np.float64(points)
 
-    xmin, ymin = -img.shape[0]/2, -img.shape[1]/2
-    xmax, ymax = xmin + img.shape[0], ymin + img.shape[1]
+    # xmin, ymin = -img.shape[0]/2, -img.shape[1]/2
+    # xmax, ymax = xmin + img.shape[0], ymin + img.shape[1]
 
-    X += xmin
-    Y += ymin
+    # X += xmin
+    # Y += ymin
 
     # to visualize: insert min/max to fit to image
-    X = np.append(X, [xmin, xmax])
-    Y = np.append(Y, [ymin, ymax])
+    # X = np.append(X, [xmin, xmax])
+    # Y = np.append(Y, [ymin, ymax])
 
     # print(X.shape)
     # print(Y.shape)
     # print((X,Y))
-
+    # quit()
     a_vec = np.float64((H[0,0]*X + H[0,1]*Y + H[0,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]))
     b_vec = np.float64((H[1,0]*X + H[1,1]*Y + H[1,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]))
 
@@ -197,13 +214,14 @@ def point_warp(points, H, img):
     # b_vec = ((b_vec - np.amin(b_vec)) / (np.amax(b_vec)-np.amin(b_vec))) * 1080
 
     # remove min and max from output
-    warped_points = a_vec[:-2], b_vec[:-2]
+    # warped_points = a_vec[:-2], b_vec[:-2]
 
-    return warped_points
+    # return warped_points
+    return a_vec, b_vec
 
 # fucntion to visualize & verify
 # warp all pixels of image-exerpt in birdview
-def warp_img(src, H, angle=None, inv=True):
+def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None):
     print('warp_im')
     print(inv)
     # declare output image size
@@ -212,7 +230,7 @@ def warp_img(src, H, angle=None, inv=True):
     # dst_height, dst_width = 1920, 1080
     height, width = src.shape[:2]
     # print((height,width))
-
+    # quit()
     if inv == True:
         # move rotation centre of image, such that output image is more centered
         xstart = -height/2
@@ -227,13 +245,39 @@ def warp_img(src, H, angle=None, inv=True):
         y_vec = np.arange(ystart, yend)
 
         Y, X = np.meshgrid(y_vec, x_vec)
+        print(yellow[0].dtype)
+        yellow = np.int64((yellow[0] + xstart, yellow[1] + ystart))
+        blue = np.int64((blue[0] + xstart, blue[1] + ystart))
 
-        # print(X.shape)
-        # print(Y.shape)
+        cam_origin = ([height + xstart], [width/2 + ystart])
+        cam_origin = point_warp(cam_origin, H, img)
+        print(cam_origin)
+
+
+        print(np.unique(np.isin(yellow[0], X), return_counts=True))
+        print(np.unique(np.isin(yellow[1], Y), return_counts=True))
+        print(np.unique(np.isin(blue[0], X), return_counts=True))
+        print(np.unique(np.isin(blue[1], Y), return_counts=True))
+        # Y_da = Y.reshape(-1)
+        # X_da = X.reshape(-1)
+        # a_vec, b_vec = point_warp((X_da,Y_da), H, img)
+        a_vec, b_vec = point_warp((X,Y), H, img)
+
+        # a_vec = a_vec.reshape(X.shape)
+        # b_vec = b_vec.reshape(Y.shape)
+
+        print(a_vec.shape)
+        print(b_vec.shape)
+
+        # print(X)
+        # print(Y)
         # print(H)
+
+
+
         # https://docs.opencv.org/4.2.0/da/d54/group__imgproc__transform.html#gaf73673a7e8e18ec6963e3774e6a94b87
-        a_vec = np.float64((H[0,0]*X + H[0,1]*Y + H[0,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]))# + height/2)
-        b_vec = np.float64((H[1,0]*X + H[1,1]*Y + H[1,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]))# + width/2)
+        # a_vec = np.float64((H[0,0]*X + H[0,1]*Y + H[0,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]))# + height/2)
+        # b_vec = np.float64((H[1,0]*X + H[1,1]*Y + H[1,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]))# + width/2)
 
         amin = np.amin(a_vec)
         bmin = np.amin(b_vec)
@@ -277,26 +321,97 @@ def warp_img(src, H, angle=None, inv=True):
         # a_vec = ((a_vec - np.amin(a_vec)) / (np.amax(a_vec)-np.amin(a_vec))) * dst_height
         # b_vec = ((b_vec - np.amin(b_vec)) / (np.amax(b_vec)-np.amin(b_vec))) * dst_width
 
-        a_mean = np.mean(a_vec)
-        b_mean = np.mean(b_vec)
-        a_vec = np.int64((a_vec - a_mean + 2 * dst_height ) /2 )# + 2000
-        b_vec = np.int64((b_vec - b_mean + dst_width ) / 2)
-        a_mean = np.mean(a_vec)
-        b_mean = np.mean(b_vec)
 
-        print(a_mean)
-        print(b_mean)
 
-        a_val, a_counts = np.unique(np.int64(a_vec), return_counts=True)
-        b_val, b_counts = np.unique(np.int64(b_vec), return_counts=True)
-        plt.bar(a_val, a_counts, label= 'height', color='blue')
-        plt.bar(b_val, b_counts, label= 'width', color='red')
+        plt.scatter(yellow[0], yellow[1], label= 'yellow', color='gold')
+        plt.scatter(blue[0], blue[1], label = 'blue', color='blue')
+        yellow = point_warp(yellow, H, img)
+        blue = point_warp(blue, H, img)
+        plt.scatter(yellow[0], yellow[1], label= 'yellow_w', color='orange')
+        plt.scatter(blue[0], blue[1], label = 'blue_w', color='lightblue')
         plt.xlabel('Position in px')
         plt.ylabel('Amount')
 
+        slope_y, intercept_y = linregress(yellow)[:2]
+        slope_b, intercept_b = linregress(blue)[:2]
+
+        print((slope_y, slope_b))
+
+        abline(slope_y, intercept_y)
+        abline(slope_b, intercept_b)
+        # plt.show()
+        print(np.unique(np.isin(yellow[0], a_vec), return_counts=True))
+        print(np.unique(np.isin(yellow[1], b_vec), return_counts=True))
+        print(np.unique(np.isin(blue[0], a_vec), return_counts=True))
+        print(np.unique(np.isin(blue[1], b_vec), return_counts=True))
+        a_mean = np.mean(a_vec)
+        b_mean = np.mean(b_vec)
+
+        a_median = np.median(a_vec)
+        b_median = np.median(b_vec)
+        print(a_mean)
+        print(b_mean)
+
+        # a_vec = np.int64((a_vec - a_median + 2*dst_height )/10 )# + 2000
+        # b_vec = np.int64((b_vec - b_median + 2*dst_width )/10)
+        # a_vec = np.int64((a_vec - a_mean + 2*dst_height )/3 )# + 2000
+        # b_vec = np.int64((b_vec - b_mean + 2*dst_width )/4)
+        a_vec = np.int64((a_vec / 30) + dst_height)
+        b_vec = np.int64((b_vec / 30) + dst_width/2)
+
+
+        # a_vec /= -1
+        # b_vec /= -1
+
+
+        print(np.mean(yellow[0]))
+        print(np.mean(yellow[1]))
+
+        yellow_a, yellow_b = np.int64(yellow)
+        blue_a, blue_b = np.int64(blue)
+
+
+        yellow_a = np.int64((yellow[0] / 30) + dst_height)
+        yellow_b = np.int64((yellow[1] / 30) + dst_width/2)
+        blue_a = np.int64((blue[0] / 30) + dst_height)
+        blue_b = np.int64((blue[1] / 30) + dst_width/2)
+
+        cam_origin_a = np.int64((cam_origin[0] / 30) + dst_height)
+        cam_origin_b = np.int64((cam_origin[1] / 30) + dst_width/2)
+
+
+
+        # blue_a = np.int64((blue[0] - a_median + 2*dst_height ) /3 )# + 2000
+        # blue_b = np.int64((blue[1] - b_median + 2*dst_width ) / 4)
+
+        print(np.mean(yellow_a))
+        print(np.mean(yellow_b))
+
+        a_mean = np.mean(a_vec)
+        b_mean = np.mean(b_vec)
+        print(a_mean)
+        print(b_mean)
+
+
+        # quit()
+        a_val, a_counts = np.unique(np.int64(a_vec), return_counts=True)
+        b_val, b_counts = np.unique(np.int64(b_vec), return_counts=True)
+        # plt.bar(a_val, a_counts, label= 'height', color='blue')
+        # plt.bar(b_val, b_counts, label= 'width', color='red')
+        # plt.xlabel('Position in px')
+        # plt.ylabel('Amount')
+        print('bar, scatterplot')
+        plt.scatter(a_vec, b_vec, label='vecs', color='black')
         a_vec[a_vec>dst_height] = -1
         b_vec[b_vec>dst_width] = -1
 
+
+        plt.scatter(yellow_a, yellow_b, label= 'yellow_scale', color='red')
+        plt.scatter(blue_a, blue_b, label = 'blue_scale', color='green')
+        plt.xlabel('height')
+        plt.ylabel('width')
+        plt.gcf().set_size_inches(10, 10)
+        plt.show()
         # a_vec /= 3
         # b_vec /= 3
         #
@@ -333,18 +448,39 @@ def warp_img(src, H, angle=None, inv=True):
         # warping, assign colour from original image to new positions
         for i in np.arange(pos.shape[0]):
             for k in np.arange(pos.shape[1]):
-                if pos[i,k,1] >= 0 and pos[i,k,0] >= 0:
+                if pos[i,k,0] >= 0 and pos[i,k,1] >= 0:
                     # print((pos[i,k,0], pos[i,k,1]))
                     dst_points[pos[i,k,0], pos[i,k,1]] = src[i,k]
 
 
+        yellow_a[yellow_a>dst_height] = 0
+        yellow_b[yellow_b>dst_width] = 0
+        blue_a[blue_a>dst_height] = 0
+        blue_b[blue_b>dst_width] = 0
+
+        yellow_a[yellow_a<0] = 0
+        yellow_b[yellow_b<0] = 0
+        blue_a[blue_a<0] = 0
+        blue_b[blue_b<0] = 0
+
+        print(np.unique(yellow_a, return_counts=True))
+        print(np.unique(yellow_b, return_counts=True))
+
+        dst_points = maximum_filter(dst_points, (30,3,1))
+        # dst_points = np.zeros_like(dst_points)
+        dst_points[yellow_a, yellow_b] = [0,255,255]
+        dst_points[blue_a, blue_b] = [255,0,0]
+        print((cam_origin_a, cam_origin_b))
 
 
-        # dst_points = maximum_filter(dst_points, (50,3,1))
-        cv.imwrite('schaunwirmal10.png', dst_points)
-        plt.show()
-        quit()
-        return dst_points
+
+
+        cv.circle(dst_points, (cam_origin_b, cam_origin_a), 50, (0,0,255))
+        cv.imwrite('schaunwirmal12.png', dst_points)
+        print('imsaved')
+        # plt.show()
+        # quit()
+        return dst_points#, (yellow_a, yellow_b), (blue_a, blue_b), (cam_origin_a, cam_origin_b)
     else:
         print('hereagain')
         dst_height, dst_width = 2000, 2000
@@ -411,6 +547,15 @@ def warp_img(src, H, angle=None, inv=True):
         print('here2')
         return dst_points
         # quit()
+
+
+def abline(slope, intercept):
+    """Plot a line from slope and intercept"""
+    axes = plt.gca()
+    x_vals = np.array(axes.get_xlim())
+    y_vals = intercept + slope * x_vals
+    plt.plot(x_vals, y_vals, '--')
+
 
 
 # from Gerhard Roth
