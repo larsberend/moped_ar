@@ -25,7 +25,7 @@ def angle_from_vis():
     file = '3_2'
     start_msec = 4160.0
     font = cv.FONT_HERSHEY_SIMPLEX
-
+    grav_center = 2.805
 
     # get data from csv as array, ignore first two elements to resolve empty datapoints
     radius_madgwick = pd.read_csv(csv_path + file + '-gyroAcclGpsMadgwickQuat.csv')[['Milliseconds','Radius','Quat']].to_numpy()[2:].swapaxes(1,0)
@@ -43,7 +43,7 @@ def angle_from_vis():
         # capture frame-by-frame
         ret, frame = cap.read()
 
-        frame = cv.imread('./problematic3.png')
+        # frame = cv.imread('./problematic.png')
 
 
         if ret:
@@ -61,8 +61,9 @@ def angle_from_vis():
             ori_eul = R.from_quat(ori).as_euler('xyz',degrees=False)
 
             # first step: color 2 lines belonging to road markings in video
-            # marked_im, hough_im, retval = mark_lanes(frame, -ori_eul[2])
-            marked_im, hough_im, retval = mark_lanes(frame, 0.340036930698958)
+            marked_im, hough_im, retval = mark_lanes(frame, -ori_eul[2])
+            # marked_im, hough_im, retval = mark_lanes(frame, 0.340036930698958)
+            # marked_im, hough_im, retval = mark_lanes(frame, -0.298919415637517)
             bird_im = np.zeros((frame.shape[1], frame.shape[0], 3))
 
             # if coloring worked, find angle via iterating over a transform
@@ -87,9 +88,15 @@ def angle_from_vis():
                     print(road_mark_distance)
                     pixel_meter = road_mark_distance / 3
                     # fw_point = cam_origin[1], cam_origin[0]
-                    fw_point = cam_origin
                     print(pixel_meter)
                     radius_pixel = radius * pixel_meter
+                    grav_center_px = grav_center * pixel_meter
+
+                    fw_point = cam_origin[0] + dx(grav_center_px, slope), cam_origin[1] + dy(grav_center_px, slope)
+
+
+
+                    print(grav_center_px)
                     print(radius_pixel)
                     print('slope:')
                     print(slope)
@@ -97,22 +104,25 @@ def angle_from_vis():
                     # perp_slope = slope
                     # bird_im = cv.line(bird_im, pt1=(np.int32(fw_point[1]), fw_point[0]), pt2=(0, np.int32(-slope*bird_im.shape[0] - fw_point[1])), color=(0,255,0))
                     # warped_img = cv.line(warped_img, pt1=(np.int32(intercept_y), 0), pt2=(np.int32(slope_y*warped_img.shape[0] + intercept_y), warped_img.shape[0]), color=(0,255,0))
-                    print(perp_slope)
-                    circle_center = (fw_point[1] + dx(radius_pixel, slope), fw_point[0] + dy(radius_pixel, slope))
-                    other_possible_circle_center = (fw_point[1] - dx(radius_pixel, slope), fw_point[0] - dy(radius_pixel, slope)) # going the other way
-                    print(circle_center)
-                    print(other_possible_circle_center)
+                    # print(perp_slope)
+                    # circle_center = (fw_point[1] + dx(radius_pixel, slope), fw_point[0] + dy(radius_pixel, slope))
+                    # other_possible_circle_center = (fw_point[0] - dx(radius_pixel, slope), fw_point[1] - dy(radius_pixel, slope)) # going the other way
+                    # print(circle_center)
+                    # print(other_possible_circle_center)
 
 
-                    circle_center = (fw_point[1] + dx(radius_pixel, perp_slope), fw_point[0] + dy(radius_pixel, perp_slope))
+                    circle_center = (fw_point[0] + dx(radius_pixel, perp_slope), fw_point[1] + dy(radius_pixel, perp_slope))
                     other_possible_circle_center = (fw_point[0] - dx(radius_pixel, perp_slope), fw_point[1] - dy(radius_pixel, perp_slope)) # going the other way
 
                     print(circle_center)
                     print(other_possible_circle_center)
                     # bird_im = cv.line(bird_im, pt1=(np.int32(fw_point[1]), fw_point[0]), pt2=(np.int32(circle_center[1]), np.int32(circle_center[0])), color=(0,255,0))
                     print(fw_point)
-                    rr,cc = circle_perimeter(np.int64(other_possible_circle_center[0]), np.int64(other_possible_circle_center[1]), np.int64(radius_pixel), shape = bird_im.shape)
-                    # perimeter = circle_perimeter(fw_point[0], np.int64(fw_point[1] - radius_pixel), np.int64(radius_pixel), shape = bird_im.shape)
+                    if ori_eul[2] > 0:
+                        rr,cc = circle_perimeter(np.int64(circle_center[0]), np.int64(circle_center[1]), np.int64(radius_pixel), shape = bird_im.shape)
+                    else:
+                        rr,cc = circle_perimeter(np.int64(other_possible_circle_center[0]), np.int64(other_possible_circle_center[1]), np.int64(radius_pixel), shape = bird_im.shape)
+
                     # print(perimeter[0].shape)
                     # print(perimeter)
                     bird_im[rr,cc] = [0,0,255]
@@ -128,7 +138,7 @@ def angle_from_vis():
 
 
                     cv.imwrite('finally.png', bird_im)
-                    quit()
+                    # quit()
 
 
                 else:
@@ -173,7 +183,7 @@ def dy(distance, m):
     return m*dx(distance, m)
 
 def dx(distance, m):
-    return distance * np.sqrt(1/(m**2+1))
+    return distance * np.sqrt(1/((m**2)+1))
 
 if __name__=='__main__':
     angle_from_vis()

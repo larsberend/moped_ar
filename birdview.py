@@ -225,8 +225,8 @@ def point_warp(points, H, img):
 # warp all pixels of image-exerpt in birdview
 def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None):
     # print(img.shape)
-    print('warp_im')
-    print(inv)
+    # print('warp_im')
+    # print(inv)
     # declare output image size
     # height, width = 1000, 1000
     dst_height, dst_width = 4000, 4000
@@ -248,19 +248,19 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None):
         y_vec = np.arange(ystart, yend)
 
         Y, X = np.meshgrid(y_vec, x_vec)
-        print(yellow[0].dtype)
+        # print(yellow[0].dtype)
         yellow = np.int64((yellow[0] + xstart, yellow[1] + ystart))
         blue = np.int64((blue[0] + xstart, blue[1] + ystart))
 
         cam_origin = ([height + xstart], [width/2 + ystart])
         cam_origin = point_warp(cam_origin, H, src)
-        print(cam_origin)
+        # print(cam_origin)
 
 
-        print(np.unique(np.isin(yellow[0], X), return_counts=True))
-        print(np.unique(np.isin(yellow[1], Y), return_counts=True))
-        print(np.unique(np.isin(blue[0], X), return_counts=True))
-        print(np.unique(np.isin(blue[1], Y), return_counts=True))
+        # print(np.unique(np.isin(yellow[0], X), return_counts=True))
+        # print(np.unique(np.isin(yellow[1], Y), return_counts=True))
+        # print(np.unique(np.isin(blue[0], X), return_counts=True))
+        # print(np.unique(np.isin(blue[1], Y), return_counts=True))
         # Y_da = Y.reshape(-1)
         # X_da = X.reshape(-1)
         # a_vec, b_vec = point_warp((X_da,Y_da), H, img)
@@ -269,8 +269,8 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None):
         # a_vec = a_vec.reshape(X.shape)
         # b_vec = b_vec.reshape(Y.shape)
 
-        print(a_vec.shape)
-        print(b_vec.shape)
+        # print(a_vec.shape)
+        # print(b_vec.shape)
 
         # print(X)
         # print(Y)
@@ -343,17 +343,17 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None):
         abline(slope_y, intercept_y)
         abline(slope_b, intercept_b)
         # plt.show()
-        print(np.unique(np.isin(yellow[0], a_vec), return_counts=True))
-        print(np.unique(np.isin(yellow[1], b_vec), return_counts=True))
-        print(np.unique(np.isin(blue[0], a_vec), return_counts=True))
-        print(np.unique(np.isin(blue[1], b_vec), return_counts=True))
+        # print(np.unique(np.isin(yellow[0], a_vec), return_counts=True))
+        # print(np.unique(np.isin(yellow[1], b_vec), return_counts=True))
+        # print(np.unique(np.isin(blue[0], a_vec), return_counts=True))
+        # print(np.unique(np.isin(blue[1], b_vec), return_counts=True))
         a_mean = np.mean(a_vec)
         b_mean = np.mean(b_vec)
 
         a_median = np.median(a_vec)
         b_median = np.median(b_vec)
-        print(a_mean)
-        print(b_mean)
+        # print(a_mean)
+        # print(b_mean)
 
         # a_vec = np.int64((a_vec - a_median + 2*dst_height )/10 )# + 2000
         # b_vec = np.int64((b_vec - b_median + 2*dst_width )/10)
@@ -367,8 +367,8 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None):
         # b_vec /= -1
 
 
-        print(np.mean(yellow[0]))
-        print(np.mean(yellow[1]))
+        # print(np.mean(yellow[0]))
+        # print(np.mean(yellow[1]))
 
         yellow_a, yellow_b = np.int64(yellow)
         blue_a, blue_b = np.int64(blue)
@@ -387,13 +387,13 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None):
         # blue_a = np.int64((blue[0] - a_median + 2*dst_height ) /3 )# + 2000
         # blue_b = np.int64((blue[1] - b_median + 2*dst_width ) / 4)
 
-        print(np.mean(yellow_a))
-        print(np.mean(yellow_b))
+        # print(np.mean(yellow_a))
+        # print(np.mean(yellow_b))
 
         a_mean = np.mean(a_vec)
         b_mean = np.mean(b_vec)
-        print(a_mean)
-        print(b_mean)
+        # print(a_mean)
+        # print(b_mean)
 
 
         # quit()
@@ -466,21 +466,21 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None):
         blue_a[blue_a<0] = 0
         blue_b[blue_b<0] = 0
 
-        print(np.unique(yellow_a, return_counts=True))
-        print(np.unique(yellow_b, return_counts=True))
+        # print(np.unique(yellow_a, return_counts=True))
+        # print(np.unique(yellow_b, return_counts=True))
 
         dst_points = maximum_filter(dst_points, (30,3,1))
         # dst_points = np.zeros_like(dst_points)
         dst_points[yellow_a, yellow_b] = [0,255,255]
         dst_points[blue_a, blue_b] = [255,0,0]
-        print((cam_origin_a, cam_origin_b))
+        # print((cam_origin_a, cam_origin_b))
 
 
 
 
         cv.circle(dst_points, (cam_origin_b, cam_origin_a), 50, (0,0,255))
         cv.imwrite('schaunwirmal12.png', dst_points)
-        print('imsaved')
+        # print('imsaved')
         # plt.show()
         # quit()
         return dst_points, (yellow_a, yellow_b), (blue_a, blue_b), (cam_origin_a, cam_origin_b)
