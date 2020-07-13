@@ -43,7 +43,12 @@ def angle_from_vis():
         # capture frame-by-frame
         ret, frame = cap.read()
 
+
+
         # frame = cv.imread('./problematic3.png')
+
+
+
 
 
         if ret:
@@ -60,9 +65,18 @@ def angle_from_vis():
             ori = [ori[1],ori[2],ori[3],ori[0]]
             ori_eul = R.from_quat(ori).as_euler('xyz',degrees=False)
 
+
+
+
             # first step: color 2 lines belonging to road markings in video
             marked_im, hough_im, retval = mark_lanes(frame, -ori_eul[2])
             # marked_im, hough_im, retval = mark_lanes(frame, 0.340036930698958)
+
+
+
+
+
+
             # marked_im, hough_im, retval = mark_lanes(frame, -0.298919415637517)
             bird_im = np.zeros((frame.shape[1], frame.shape[0], 3))
 
@@ -73,6 +87,7 @@ def angle_from_vis():
                 if found:
                     # print(angle_calc)
                     # quit()
+
                     pitch_angles[frame_nr_int] = mil, angle_calc
                     print(np.degrees(angle_calc))
 
@@ -89,6 +104,11 @@ def angle_from_vis():
                     pixel_meter = road_mark_distance / 3
                     # fw_point = cam_origin[1], cam_origin[0]
                     print(pixel_meter)
+
+
+                    # radius = -111.83459873843
+
+
                     radius_pixel = radius * pixel_meter
                     grav_center_px = grav_center * pixel_meter
 
@@ -119,13 +139,13 @@ def angle_from_vis():
                     # bird_im = cv.line(bird_im, pt1=(np.int32(fw_point[1]), fw_point[0]), pt2=(np.int32(circle_center[1]), np.int32(circle_center[0])), color=(0,255,0))
                     print(fw_point)
                     if ori_eul[2] > 0:
-                        rr,cc = circle_perimeter(np.int64(circle_center[0]), np.int64(circle_center[1]), np.int64(radius_pixel), shape = bird_im.shape)
+                        rr,cc = circle_perimeter(np.int64(circle_center[0]), np.int64(circle_center[1]), np.int64(np.abs(radius_pixel)), shape = bird_im.shape)
                     else:
-                        rr,cc = circle_perimeter(np.int64(other_possible_circle_center[0]), np.int64(other_possible_circle_center[1]), np.int64(radius_pixel), shape = bird_im.shape)
+                        rr,cc = circle_perimeter(np.int64(other_possible_circle_center[0]), np.int64(other_possible_circle_center[1]), np.int64(np.abs(radius_pixel)), shape = bird_im.shape)
 
                     # print(perimeter[0].shape)
                     # print(perimeter)
-                    print(rr,cc)
+                    # print(rr,cc)
                     bird_im[rr,cc] = [0,0,255]
                     line_thickness = 20
 
@@ -168,6 +188,7 @@ def angle_from_vis():
             cv.imshow(file, marked_im)
             print(frame_nr_int)
             frame_nr_int += 1
+            # quit()
 
         if cv.waitKey(1) & 0xFF == ord('q'):
             pitch_df = pd.DataFrame(data=pitch_angles, columns=['Milliseconds', 'Pitch_from_vis'])

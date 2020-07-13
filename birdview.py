@@ -329,8 +329,8 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None, dst_height=40
 
         # plt.scatter(yellow[0], yellow[1], label= 'yellow', color='gold')
         # plt.scatter(blue[0], blue[1], label = 'blue', color='blue')
-        # yellow = point_warp(yellow, H, src)
-        # blue = point_warp(blue, H, src)
+        yellow = point_warp(yellow, H, src)
+        blue = point_warp(blue, H, src)
         # plt.scatter(yellow[0], yellow[1], label= 'yellow_w', color='orange')
         # plt.scatter(blue[0], blue[1], label = 'blue_w', color='lightblue')
         # plt.xlabel('Position in px')
@@ -404,8 +404,8 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None, dst_height=40
         # plt.bar(b_val, b_counts, label= 'width', color='red')
         # plt.xlabel('Position in px')
         # plt.ylabel('Amount')
-        print('bar, scatterplot')
-        plt.scatter(a_vec, b_vec, label='vecs', color='black')
+        # print('bar, scatterplot')
+        # plt.scatter(a_vec, b_vec, label='vecs', color='black')
         a_vec[a_vec>dst_height] = -1
         b_vec[b_vec>dst_width] = -1
 
@@ -478,9 +478,8 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None, dst_height=40
 
 
 
-
         cv.circle(dst_points, (cam_origin_b, cam_origin_a), 50, (0,0,255))
-        cv.imwrite('schaunwirmal12.png', dst_points)
+        # cv.imwrite('schaunwirmal12.png', dst_points)
         # print('imsaved')
         # plt.show()
         # quit()
