@@ -223,7 +223,7 @@ def point_warp(points, H, img):
 
 # fucntion to visualize & verify
 # warp all pixels of image-exerpt in birdview
-def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None):
+def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None, dst_height=4000, dst_width=4000):
     # print(img.shape)
     # print('warp_im')
     # print(inv)
@@ -281,7 +281,7 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None):
         # https://docs.opencv.org/4.2.0/da/d54/group__imgproc__transform.html#gaf73673a7e8e18ec6963e3774e6a94b87
         # a_vec = np.float64((H[0,0]*X + H[0,1]*Y + H[0,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]))# + height/2)
         # b_vec = np.float64((H[1,0]*X + H[1,1]*Y + H[1,2])/(H[2,0]*X + H[2,1]*Y + H[2,2]))# + width/2)
-
+        '''
         amin = np.amin(a_vec)
         bmin = np.amin(b_vec)
         # print((np.amin(a_vec), np.amax(a_vec)))
@@ -317,6 +317,7 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None):
         print(((Y[ymin],X[ymin]), (Y[ymax], X[ymax])))
 
         print('\n')
+        '''
         # print(np.amin(a_vec) / (np.amax(a_vec)-np.amin(a_vec)))
         # print((np.amax(b_vec)-np.amin(b_vec)))
 
@@ -326,14 +327,14 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None):
 
 
 
-        plt.scatter(yellow[0], yellow[1], label= 'yellow', color='gold')
-        plt.scatter(blue[0], blue[1], label = 'blue', color='blue')
-        yellow = point_warp(yellow, H, src)
-        blue = point_warp(blue, H, src)
-        plt.scatter(yellow[0], yellow[1], label= 'yellow_w', color='orange')
-        plt.scatter(blue[0], blue[1], label = 'blue_w', color='lightblue')
-        plt.xlabel('Position in px')
-        plt.ylabel('Amount')
+        # plt.scatter(yellow[0], yellow[1], label= 'yellow', color='gold')
+        # plt.scatter(blue[0], blue[1], label = 'blue', color='blue')
+        # yellow = point_warp(yellow, H, src)
+        # blue = point_warp(blue, H, src)
+        # plt.scatter(yellow[0], yellow[1], label= 'yellow_w', color='orange')
+        # plt.scatter(blue[0], blue[1], label = 'blue_w', color='lightblue')
+        # plt.xlabel('Position in px')
+        # plt.ylabel('Amount')
 
         slope_y, intercept_y = linregress(yellow)[:2]
         slope_b, intercept_b = linregress(blue)[:2]
@@ -409,11 +410,11 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None):
         b_vec[b_vec>dst_width] = -1
 
 
-        plt.scatter(yellow_a, yellow_b, label= 'yellow_scale', color='red')
-        plt.scatter(blue_a, blue_b, label = 'blue_scale', color='green')
-        plt.xlabel('height')
-        plt.ylabel('width')
-        plt.gcf().set_size_inches(10, 10)
+        # plt.scatter(yellow_a, yellow_b, label= 'yellow_scale', color='red')
+        # plt.scatter(blue_a, blue_b, label = 'blue_scale', color='green')
+        # plt.xlabel('height')
+        # plt.ylabel('width')
+        # plt.gcf().set_size_inches(10, 10)
         # plt.show()
         # a_vec /= 3
         # b_vec /= 3
@@ -550,6 +551,50 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None):
         print('here2')
         return dst_points
         # quit()
+def back_warp(img, H, dst_height=1080, dst_width=1920):
+    height, width = img.shape[:2]
+    xstart = -height/2
+    # xstart = 0
+    xend = xstart + height
+
+    ystart = -width/2
+    # ystart = 0
+    yend = ystart + width
+
+    x_vec = np.arange(xstart, xend)
+    y_vec = np.arange(ystart, yend)
+
+    Y, X = np.meshgrid(y_vec, x_vec)
+
+    a_vec, b_vec = point_warp((X,Y),H, img)
+    a_mean= np.median(a_vec)
+    b_mean = np.median(b_vec)
+    # scale new positions to output
+    # a_vec = ((a_vec - np.amin(a_vec)) / (np.amax(a_vec)-np.amin(a_vec))) * dst_height
+    # b_vec = ((b_vec - np.amin(b_vec)) / (np.amax(b_vec)-np.amin(b_vec))) * dst_width
+    # a_vec = np.int64((a_vec - a_median + 2*dst_height )/10 )# + 2000
+    # b_vec = np.int64((b_vec - b_median + 2*dst_width )/10)
+    a_vec = np.int64((a_vec - a_mean + dst_height )/3 )# + 2000
+    b_vec = np.int64((b_vec - b_mean + dst_width )/3)
+    # a_vec = np.int64((a_vec / 30) + dst_height)
+    # b_vec = np.int64((b_vec / 30) + dst_width/2)
+    a_vec[a_vec>dst_height] = -1
+    b_vec[b_vec>dst_width] = -1
+    # print(pos.shape)
+    # print(dst_points.shape)
+    # print(src.shape)
+    # quit()
+    # warping, assign colour from original image to new positions
+    dst_points = np.zeros((dst_height+1, dst_width+1, 3), dtype=np.uint8)
+    pos = np.stack((a_vec, b_vec), 2).astype(np.int64)
+    for i in np.arange(pos.shape[0]):
+        for k in np.arange(pos.shape[1]):
+            if pos[i,k,0] >= 0 and pos[i,k,1] >= 0:
+                # print((pos[i,k,0], pos[i,k,1]))
+                dst_points[pos[i,k,0], pos[i,k,1]] = img[i,k]
+
+    cv.imwrite('backwarp.png', dst_points)
+    quit()
 
 
 def abline(slope, intercept):

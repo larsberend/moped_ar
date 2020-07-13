@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from birdview import birdview
+from birdview import birdview, back_warp, get_homography2, K
 from mark_lanes import mark_lanes
 from cordFrames import cordFrame, worldFrame, transform, get_cordFrames
 from scipy.spatial.transform import Rotation as R # quaternion in scalar-last
@@ -23,7 +23,7 @@ def angle_from_vis():
     csv_path = '../100GOPRO/testfahrt_1006/kandidaten/csv/'
     video_path = '../100GOPRO/testfahrt_1006/kandidaten/'
     file = '3_2'
-    start_msec = 4160.0
+    start_msec = 00.0
     font = cv.FONT_HERSHEY_SIMPLEX
     grav_center = 2.805
 
@@ -43,7 +43,7 @@ def angle_from_vis():
         # capture frame-by-frame
         ret, frame = cap.read()
 
-        # frame = cv.imread('./problematic.png')
+        # frame = cv.imread('./problematic3.png')
 
 
         if ret:
@@ -125,19 +125,32 @@ def angle_from_vis():
 
                     # print(perimeter[0].shape)
                     # print(perimeter)
+                    print(rr,cc)
                     bird_im[rr,cc] = [0,0,255]
-                    rr[rr>3996] = 0
-                    rr[rr<4] = 0
-                    cc[cc>3996] = 0
-                    cc[cc<4] = 0
+                    line_thickness = 20
 
-                    bird_im[rr+1, cc+1] = [0,0,255]
-                    bird_im[rr+2, cc+2] = [0,0,255]
-                    bird_im[rr-1, cc-1] = [0,0,255]
-                    bird_im[rr-2, cc-2] = [0,0,255]
+                    rr[rr<line_thickness] = 0
+                    # cc[cc<line_thickness] = 0
+                    rr[rr>bird_im.shape[0] - line_thickness] = 0
+                    # cc[cc>bird_im.shape[1] - line_thickness] = 0
+
+                    for i in range(1,line_thickness):
+                        bird_im[rr+i, cc] = [0,0,255]
+                        bird_im[rr-i, cc] = [0,0,255]
 
 
-                    cv.imwrite('finally.png', bird_im)
+                    # bird_im[rr+1, cc+1] = [0,0,255]
+                    # bird_im[rr+2, cc+2] = [0,0,255]
+                    # bird_im[rr-1, cc-1] = [0,0,255]
+                    # bird_im[rr-2, cc-2] = [0,0,255]
+
+
+                    # cv.imwrite('finally.png', bird_im)
+                    #
+                    # back_rot = R.from_euler('xyz', [0, angle_calc, 0], degrees=False).as_matrix()
+                    # back_rot = np.linalg.inv(back_rot)
+                    # H = get_homography2(back_rot, K)
+                    # backwarp = back_warp(bird_im, H, dst_height=1080-630, dst_width=1920)
                     # quit()
 
 

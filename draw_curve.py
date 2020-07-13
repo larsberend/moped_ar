@@ -34,14 +34,14 @@ factor = 1 # take 100 points per meter, show 1
 view_dist = 30
 # factor = 10 # take 100 points per meter, show 1
 # view_dist = 100
-
+grav_center = 2.805
 horizon = False
 
 def get_arc_points(radius, view_dist, factor):
     # radius = 10
     z_values = np.arange(0, view_dist, 1/factor)
     x_values = np.sqrt(radius**2 - z_values**2) - np.abs(radius)
-
+    
     if radius > 0:
         x_values *= -1
     # print(radius)
