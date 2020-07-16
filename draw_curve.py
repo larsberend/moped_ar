@@ -27,21 +27,23 @@ pu = np.float64(0.0062/1920)
 pv = np.float64(0.0045/1080)
 # central coordinates of video
 u0 = 959
-v0 = 648
+# v0 = 648
 # u0 = 956
-# v0 = 559
+v0 = 559
 factor = 1 # take 100 points per meter, show 1
-view_dist = 30
+view_dist = 50
 # factor = 10 # take 100 points per meter, show 1
 # view_dist = 100
-grav_center = 2.805
-horizon = False
+grav_center = 2.805 # behind lowest point visible in calib image
+horizon = True
+
+calib_pitch_from_vis = 0.698131700797732
 
 def get_arc_points(radius, view_dist, factor):
     # radius = 10
     z_values = np.arange(0, view_dist, 1/factor)
     x_values = np.sqrt(radius**2 - z_values**2) - np.abs(radius)
-    
+
     if radius > 0:
         x_values *= -1
     # print(radius)
@@ -50,7 +52,8 @@ def get_arc_points(radius, view_dist, factor):
     # print(x_values)
     return x_values , z_values
 
-def draw_curve(radius, cam_frame, fw_frame, pitch):
+# def draw_curve(radius, cam_frame, fw_frame, pitch):
+def draw_curve(radius, cam_frame, mc_frame, pitch):
     # radius = 2
 
     # a radius with a radius of inf/-inf is a line. Here, threshold is 1000m for speed-up
@@ -106,7 +109,7 @@ def draw_curve(radius, cam_frame, fw_frame, pitch):
         # put all together --> camera matrix C
         K = np.dot(pixel_mat, focal_mat)
 
-        pitch_rot = R.from_euler('xyz', (0, pitch, 0), degrees=False).as_matrix()
+        pitch_rot = R.from_euler('xyz', [0, pitch, 0], degrees=False).as_matrix()
         H = get_homography2(pitch_rot, K)
         Hinv = np.linalg.inv(H)
         curve_proj = point_warp((x, z), Hinv, np.zeros((10000, 10000)))
@@ -135,34 +138,40 @@ def draw_curve(radius, cam_frame, fw_frame, pitch):
     # print(curve4d[:5])
     # quit()
 
-    '''
-    deprecated
-    # camera rotation inverse (from world to camera)
-    # cam_rot = cam_frame.transToWorld.rot.inv().as_matrix()
-    '''
 
     #  camera rotation inverse (from world to camera)
     world_to_cam_rot = cam_frame.transToWorld.rot.inv()#.as_matrix()
 
+    '''
     # front wheel to world rotation
     fw_to_world_rot = fw_frame.transToWorld.rot#.as_matrix()
 
     # camera to front wheel
     cam_rot = world_to_cam_rot * fw_to_world_rot
     cam_rot = cam_rot.as_matrix()
+    '''
+
+    mc_to_world_rot = mc_frame.transToWorld.rot
+
+    cam_rot = world_to_cam_rot * mc_to_world_rot
+    cam_rot = cam_rot.as_matrix()
+
+
     # print(cam_rot)
     homog_rot = np.identity(cam_rot.shape[0]+1)
     homog_rot[:-1,:-1] = cam_rot
     homog_rot[-1,-1] = 1
 
     # homogeneous camera translation
-    cam_trans = cam_frame.transToWorld.trans - fw_frame.transToWorld.trans
+    # cam_trans = cam_frame.transToWorld.trans - fw_frame.transToWorld.trans
+    cam_trans = cam_frame.transToWorld.trans - mc_frame.transToWorld.trans
     homog_pos = np.identity(4)
     homog_pos[:-1, -1] = -cam_trans
-
+    print('cam_trans')
+    print(-cam_trans)
     # print(homog_pos)
     # print(homog_rot)
-
+    # quit()
     # combine trans and rot
     trans_rot = np.dot(homog_pos, homog_rot)
     trans_rot = trans_rot

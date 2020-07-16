@@ -37,7 +37,7 @@ class worldFrame():
 
 '''
 class for coordinate frames located in world space.
-use transform class to show positien(translation, rotation) relative to world origin
+use transform class to show position(translation, rotation) relative to world origin
 '''
 class cordFrame():
     def __init__(self, name, data, world_frame, parent, children, transToParent):
@@ -91,7 +91,7 @@ def get_cordFrames():
                           world_frame=world_frame,
                           parent=fw_frame,
                           children=[],
-                          transToParent=transform(np.array([-1.2137,0, 0], dtype=np.float64),
+                          transToParent=transform(np.array([1.2137,0, 0], dtype=np.float64),
                                                   [
                                                   # [np.sin(np.pi/2), 0, 0, np.cos(np.pi/2)],
                                                   [0, 0, np.sin(np.pi/4),np.cos(np.pi/4)],
@@ -114,9 +114,22 @@ def get_cordFrames():
                                                   [0, 0, np.sin(np.pi/4), np.cos(np.pi/4)])
                           )
 
+    mc_frame = cordFrame(data=None,
+                         name='Mass center on ground',
+                         world_frame=world_frame,
+                         parent=fw_frame,
+                         children=[],
+                         transToParent=transform(np.array([0, 0, -0.7105], dtype=np.float64),
+                                                 [0, 0, 0, 1])
+                        )
+
+
+
+
+
     # print(world_frame)
     # print(fw_frame)
     # print(imu_frame)
     # print(cam_frame)
 
-    return world_frame, fw_frame, cam_frame, imu_frame
+    return world_frame, fw_frame, cam_frame, imu_frame, mc_frame
