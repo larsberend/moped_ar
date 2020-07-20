@@ -2,6 +2,7 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
+import skimage.transform
 from scipy.stats import linregress
 from sklearn.cluster import KMeans
 from sklearn import linear_model
@@ -27,7 +28,7 @@ def birdview(img, view, last_angle):
     # new_width = np.amax([max(yellow[1]),max(blue[1])])
     orig_img = img.copy()
     # img = img[new_height:, 0:new_width+1]
-    cut_to_road = orig_img[int(630):]
+    cut_to_road = orig_img[int(620):]
     img = cut_to_road
 
 
@@ -41,17 +42,17 @@ def birdview(img, view, last_angle):
         return warped_img, angle, True, slope, inter1, inter2, yellow_warp, blue_warp, cam_origin
     # else search for it again with best guess
     else:
-        warped_img, angle, found, slope, inter1, inter2, yellow_warp, blue_warp, cam_origin = iter_angle(angle, img, view, yellow, blue)
+        warped_img, angle, found, slope, inter1, inter2, yellow_warp, blue_warp, cam_origin = iter_angle(angle, cut_to_road, view, yellow, blue)
 
         # fin_rot = R.from_euler('xyz', (0, angle, 0), degrees=False).as_matrix()
         # H = get_homography2(fin_rot, K)
         # cut_to_road = orig_img[int(630):]
         # big_warp = warp_img(cut_to_road, H)
-        # cv.imwrite('schaunwirmal8.png', cut_to_road)
+        cv.imwrite('schaunwirmal8.png', cut_to_road)
         # print(cut_to_road.shape)
         # big_warp = warp_img(cut_to_road, H)
         # big_warp = warp_img(cut_to_road, H, False)
-        # cv.imwrite('schaunwirmal9.png', big_warp)
+       # cv.imwrite('schaunwirmal9.png', big_warp)
 
         if found:
             return warped_img, angle, True, slope, inter1, inter2, yellow_warp, blue_warp, cam_origin
@@ -74,6 +75,7 @@ def iter_angle(last_angle, img, view, yellow, blue):
     slope_y, slope_b, intercept_y, intercept_b = None, None, None, None
     if last_angle is None:
         # search_grid = np.arange(np.radians(90), np.radians(361), np.radians(1))
+        # search_grid = np.arange(np.radians(0), np.radians(43), np.radians(1))
         search_grid = np.arange(np.radians(30), np.radians(43), np.radians(0.1))
     else:
         search_grid = np.arange(last_angle-0.1, last_angle+0.1, 0.00001)
@@ -103,9 +105,9 @@ def iter_angle(last_angle, img, view, yellow, blue):
         if view:
             # angle = 0.2
             # warped_img = warp_img(img, H, angle, inv=False)
-            warped_img = warp_img(img, H, angle_guess, True, yellow, blue)
+            warping = warp_img(img, H, angle, True, yellow, blue)
             # plt.savefig('warp_plots/%s.png'%(cnt))
-            plt.close()
+            # plt.close()
             # quit()
             # warped_img = warp_img(img, H)
             # yellow_warp = np.where(np.all(warped_img == [0,255,255], axis=-1))
@@ -119,10 +121,11 @@ def iter_angle(last_angle, img, view, yellow, blue):
             # warped_img = cv.line(warped_img, pt1=(np.int32(intercept_y), 0), pt2=(np.int32(slope_y*warped_img.shape[0] + intercept_y), warped_img.shape[0]), color=(0,255,0))
             # warped_img = cv.line(warped_img, pt1=(np.int32(intercept_b), 0), pt2=(np.int32(slope_b*warped_img.shape[0] + intercept_b), warped_img.shape[0]), color=(255,0,0))
             # if cnt == 0:
-                # cv.imwrite('./my_warp_40/2_grad.png', img)
+               # cv.imwrite('./my_warp_40/2_grad.png', img)
                 # quit()
             # warped_img = maximum_filter(warped_img, size=(30,1,1))
-            cv.imwrite('./my_warp/%s.png'%(cnt), warped_img)
+            # cv.imwrite('./my_warp/%s.png'%(cnt), warped_img)
+            cv.imwrite('./my_warp/%s.png'%(cnt), warping[0])
             # cv.imwrite('./my_warp_40/%s.png'%(cnt), warped_img)
             cnt += 1
             # quit()
@@ -167,12 +170,21 @@ def iter_angle(last_angle, img, view, yellow, blue):
                 print(smallest_diff)
                 # warped_img = warp_img(img, H, angle_guess, False)
                 warped_img, yellow_warp, blue_warp, cam_origin = warp_img(img, H, angle_guess, True, yellow, blue)
+                # warped_img, yellow_warp, blue_warp, cam_origin = warp_img(img, H, angle_guess, False, yellow, blue)
+                # quit()
                 slope_y, intercept_y = linregress(yellow_warp)[:2]
                 slope_b, intercept_b = linregress(blue_warp)[:2]
-                cv.imwrite('schaunwirmal6.png', warped_img)
+                # cv.imwrite('schaunwirmal6.png', warped_img)
+
+                rotate_angle = np.degrees(0 - np.arctan(slope_b))
+                rotated_img = skimage.transform.rotate(warped_img, rotate_angle, clip=True, preserve_range=True)
+                # slope_b = 0
+                # cv.imwrite('bv_rotate_test.png', rotate_img)
+                #
+                # quit()
                 cv.putText(warped_img, 'Pitch Angle: %s'%(np.degrees(angle)), (10, 1650), font, 0.5, (255, 255, 0), 2, cv.LINE_AA)
                 cv.putText(warped_img, 'Smallest diff: %s'%(smallest_diff), (10, 1670), font, 0.5, (255, 255, 0), 2, cv.LINE_AA)
-                return warped_img, angle_guess, True, slope_b, intercept_y, intercept_b, yellow_warp, blue_warp, cam_origin
+                return rotated_img, angle_guess, True, slope_b, intercept_y, intercept_b, yellow_warp, blue_warp, cam_origin
         # if no good angle found, return False and best guess
     # quit()
     return warped_img, angle_guess, False, slope_b, intercept_y, intercept_b, None, None, None
@@ -360,8 +372,10 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None, dst_height=40
         # b_vec = np.int64((b_vec - b_median + 2*dst_width )/10)
         # a_vec = np.int64((a_vec - a_mean + 2*dst_height )/3 )# + 2000
         # b_vec = np.int64((b_vec - b_mean + 2*dst_width )/4)
+
+
         a_vec = np.int64((a_vec / 30) + dst_height)
-        b_vec = np.int64((b_vec / 30) + dst_width/2)
+        b_vec = np.int64((b_vec / 30) + dst_width / 2)
 
 
         # a_vec /= -1
@@ -374,14 +388,14 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None, dst_height=40
         yellow_a, yellow_b = np.int64(yellow)
         blue_a, blue_b = np.int64(blue)
 
-
         yellow_a = np.int64((yellow[0] / 30) + dst_height)
-        yellow_b = np.int64((yellow[1] / 30) + dst_width/2)
+        yellow_b = np.int64((yellow[1] / 30) + dst_width / 2)
+
         blue_a = np.int64((blue[0] / 30) + dst_height)
-        blue_b = np.int64((blue[1] / 30) + dst_width/2)
+        blue_b = np.int64((blue[1] / 30) + dst_width / 2)
 
         cam_origin_a = np.int64((cam_origin[0] / 30) + dst_height)
-        cam_origin_b = np.int64((cam_origin[1] / 30) + dst_width/2)
+        cam_origin_b = np.int64((cam_origin[1] / 30) + dst_width / 2)
 
 
 
@@ -398,8 +412,8 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None, dst_height=40
 
 
         # quit()
-        a_val, a_counts = np.unique(np.int64(a_vec), return_counts=True)
-        b_val, b_counts = np.unique(np.int64(b_vec), return_counts=True)
+        # a_val, a_counts = np.unique(np.int64(a_vec), return_counts=True)
+        # b_val, b_counts = np.unique(np.int64(b_vec), return_counts=True)
         # plt.bar(a_val, a_counts, label= 'height', color='blue')
         # plt.bar(b_val, b_counts, label= 'width', color='red')
         # plt.xlabel('Position in px')
@@ -457,6 +471,7 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None, dst_height=40
                     dst_points[pos[i,k,0], pos[i,k,1]] = src[i,k]
 
 
+
         yellow_a[yellow_a>dst_height] = 0
         yellow_b[yellow_b>dst_width] = 0
         blue_a[blue_a>dst_height] = 0
@@ -470,7 +485,9 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None, dst_height=40
         # print(np.unique(yellow_a, return_counts=True))
         # print(np.unique(yellow_b, return_counts=True))
 
-        dst_points = maximum_filter(dst_points, (30,3,1))
+        dst_points = maximum_filter(dst_points, (10,3,1))
+        # dst_points = maximum_filter(dst_points, (np.int32(np.degrees(angle)),3,1))
+
         # dst_points = np.zeros_like(dst_points)
         dst_points[yellow_a, yellow_b] = [0,255,255]
         dst_points[blue_a, blue_b] = [255,0,0]
@@ -478,8 +495,10 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None, dst_height=40
 
 
 
-        cv.circle(dst_points, (cam_origin_b, cam_origin_a), 50, (0,0,255))
-        # cv.imwrite('schaunwirmal12.png', dst_points)
+        # cv.circle(dst_points, (cam_origin_b, cam_origin_a), 50, (0,0,255))
+        cv.circle(dst_points, (cam_origin_b, cam_origin_a), 5, (0,0,255), thickness=-1)
+        # dst_points[cam_origin_a, cam_origin_b] = [0,0,255]
+        cv.imwrite('schaunwirmal12.png', dst_points)
         # print('imsaved')
         # plt.show()
         # quit()
@@ -624,10 +643,14 @@ if __name__ == '__main__':
     # img = cv.imread('./3_00-01-48.png') # Read the test img
     # img, roll_angle= cv.imread('./problematic.png'), 0.298919415637517
     # img, roll_angle= cv.imread('./problematic2.png'), 0.171368206765908
-    img, roll_angle= cv.imread('./problematic3.png'), -0.340036930698958
+    # img, roll_angle= cv.imread('./problematic3.png'), -0.340036930698958
+    # img, roll_angle= cv.imread('./problematic0.png'), -0.234190505239813
 
+    # marked_img, houg_im, retval = mark_lanes(img, -roll_angle)
 
-    marked_img, houg_im, retval = mark_lanes(img, -roll_angle)
     # print(retval)
-    warped_img, angle, found,_,_,_ = birdview(marked_img, False, None)
-    # cv.imwrite('aha.png', warped_img)
+    marked_img, roll_angle= cv.imread('./calib_yb.png'), 0
+    warped_img, angle, found,_,_,_,_,_,_ = birdview(marked_img, False, None)
+    print(angle)
+    print(np.degrees(angle))
+    cv.imwrite('aha.png', warped_img)

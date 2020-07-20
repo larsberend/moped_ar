@@ -47,7 +47,7 @@ Updates camera-parameters with data from IMU.
 '''
 
 def main():
-    bv = True
+    bv = False
     angle_calc = None
     world_frame, fw_frame, cam_frame, imu_frame, mc_frame = get_cordFrames()
 
@@ -73,9 +73,13 @@ def main():
     cap.set(0, start_msec)
     # int counting frames(for saving snapshots)
     frame_nr_int = 0
+    ret, orig_frame = cap.read()
+    # ret, orig_frame = True, cv.imread('../circle_wdegrees.png')
+    # orig_frame = cv.resize(orig_frame, (1920, 1080))
     while(cap.isOpened()):
         # capture frame-by-frame
-        ret, frame = cap.read()
+        # ret, frame = cap.read()
+        frame = orig_frame.copy()
         if ret:
             # print('ret')
             height,width = frame.shape[:2]
@@ -92,7 +96,7 @@ def main():
             ori_x_fw = R.from_euler('xyz', [ori_eul[0], 0, 0])
             # fw_trans = transform([0,0,0], ori_xy_fw.as_quat())
             fw_trans = transform([0,0,0], ori_x_fw.as_quat())
-            fw_frame.update_ori(fw_trans)
+            # fw_frame.update_ori(fw_trans)
 
             ori_z_imu = R.from_euler('xyz',[0, 0, -ori_eul[2]], degrees=False)
             new_mc = ori_z_imu.apply([0,0.5,0])
@@ -127,6 +131,10 @@ def main():
                     print(pitch)
 
                     ori_yz = R.from_euler('xyz', [0, -pitch, -ori_eul[2]])
+                    # ori_yz = R.from_euler('xyz', [0, -pitch, -np.radians(frame_nr_int)])
+                    print('\n')
+                    print(-ori_eul[2])
+                    print('\n')
                     pos_from_angle = ori_yz.apply([0, 1.1237, 0])
                     # print('pos_from_angle')
                     # print(pos_from_angle)
@@ -144,22 +152,29 @@ def main():
 
 
             else:
-                ori_z_imu_pos = R.from_euler('xyz',[0, 0, -ori_eul[2]], degrees=False)
-                # ori_yz_imu = R.from_euler('xyz',[0, ori_eul[1], -ori_eul[2]], degrees=False)
+                print('else: ')
+                ori_z_imu = R.from_euler('xyz',[0, 0, -np.radians(frame_nr_int)], degrees=False)
+                # ori_z_imu_pos = R.from_euler('xyz',[0, 0, -ori_eul[2]], degrees=False)
+
+
 
                 # ckeck translation of camera with angle of 0 and 90
                 # ori_z_imu = R.from_euler('xyz',[0, 0, -np.pi/2],degrees=False)
                 # ori_z_imu = R.from_euler('xyz',[0, 0, 0],degrees=False)
 
+                print(ori_z_imu.as_quat())
+                print(ori_z_imu.as_euler('xyz', degrees=True))
+
+
                 # pos_from_angle = ori_yz_imu.apply([0, 1.1237, 0])
-                pos_from_angle = ori_z_imu_pos.apply([0, 1.1237, 0])
+                pos_from_angle = ori_z_imu.apply([0, 1.1237, 0])
 
                 # print(pos_from_angle)
 
                 # calc new transform of IMU to world
                 imu_trans = transform(pos_from_angle, [
-                                                        [0, 0, np.sin(np.pi/4),np.cos(np.pi/4)],
-                                                        [np.sin(np.pi/2), 0, 0, np.cos(np.pi/2)],
+                                                        # [0, 0, np.sin(np.pi/4),np.cos(np.pi/4)],
+                                                        # [np.sin(np.pi/2), 0, 0, np.cos(np.pi/2)],
                                                         # [ori_z_imu[1], 0, 0, np.cos(np.arcsin(ori_z_imu[1]))]
                                                         ori_z_imu.as_quat()
                                                         # ori_yz_imu.as_quat()
@@ -192,12 +207,14 @@ def main():
             # print(curve_proj)
             amount_lines = curve_proj.shape[0]-1
             for j in range(curve_proj.shape[0]-1):
-                cv.line(frame, (curve_proj[j,0], curve_proj[j,1]), (curve_proj[j+1,0], curve_proj[j+1,1]), (0,255,0), thickness = 5)
-
+                # cv.line(frame, (curve_proj[j,0], curve_proj[j,1]), (curve_proj[j+1,0], curve_proj[j+1,1]), (0,255,0), thickness = 5)
+                cv.line(frame, (curve_proj[j,0], curve_proj[j,1]), (curve_proj[j+1,0], curve_proj[j+1,1]), (0,255,0), thickness = 1)
+                # print(((curve_proj[j,0], curve_proj[j,1]), (curve_proj[j+1,0], curve_proj[j+1,1])))
                 # b,g,r = frame[curve_proj[j][0],curve_proj[j][1]]
                 # cv.circle(frame, (curve_proj[j,0], curve_proj[j,1]), 5, (0,255,0))
                 # print(int(255/(j+1)))
                 # cv.line(frame, tuple(a[0][j]), tuple(a[1][j]), (int(b), int(g), int(255/(j+1))), 10, lineType=cv.LINE_8)
+            # quit()
             # frame2[frame2==0] = frame[frame2==0]
             # frame = cv.addWeighted(frame, 0.5,frame2, 0.5, 0)
 
@@ -211,8 +228,10 @@ def main():
             frame[y_offset:y_offset+top_view.shape[0], x_offset:x_offset+top_view.shape[1]] = top_view
 
             # save every frame as png
+            # frame = skimage.transform.rotate(frame, 1, clip=True, preserve_range=True)
             cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_processed/%s.png'%(file, frame_nr_int), frame)
-            # print(frame)
+            # quit()
+            print(frame_nr_int)
             cv.imshow(file, frame)
             frame_nr_int += 1
         if cv.waitKey(1) & 0xFF == ord('q'):

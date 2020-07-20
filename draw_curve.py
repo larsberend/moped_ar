@@ -20,16 +20,17 @@ circle lies on a plane --> Y=0 in all points
 '''
 
 # actual focal length = equivalent focal length / crop factor
-f = np.float64(0.019/5.6)
+f = np.float64(0.019/5.64)
 
 # sensor size / video resolution
-pu = np.float64(0.0062/1920)
-pv = np.float64(0.0045/1080)
+pu = np.float64(0.00617/1920)
+pv = np.float64(0.00455/1080)
 # central coordinates of video
-u0 = 959
+u0 = 960
 # v0 = 648
 # u0 = 956
-v0 = 559
+# v0 = 559
+v0 = 540
 factor = 1 # take 100 points per meter, show 1
 view_dist = 50
 # factor = 10 # take 100 points per meter, show 1
@@ -94,10 +95,23 @@ def draw_curve(radius, cam_frame, mc_frame, pitch):
         # hori_x, hori_z = line(-100000, 100000, 100000, 100000)
         # print(hori_x)
         # print(hori_z)
-        hori_x = np.arange(-10000, 10000),
-        hori_z = np.full_like(hori_x, fill_value=10000)
-        x = np.append(x, hori_x)
-        z = np.append(z, hori_z)
+        hori_x = np.arange(-100000, 100000, 1000)
+        # hori_x = np.array([-4000, 4000], dtype= np.float64)
+        # print(hori_x)
+        # quit()
+        hori_z = np.full_like(hori_x, fill_value=4000)
+
+        # hori_x = np.arange(-10000, 10000)
+        # x = np.append(x, hori_x)
+        # z = np.append(z, hori_z)
+
+        x = hori_x
+        z = hori_z
+
+        # print((x,z))
+        # quit()
+
+
     # print('hier')
     # extend to 4d (homogeneous) with y = 0, w = 1
     if pitch is not None:
@@ -140,7 +154,10 @@ def draw_curve(radius, cam_frame, mc_frame, pitch):
 
 
     #  camera rotation inverse (from world to camera)
+    # print('to world and back:')
+    # print(cam_frame.transToWorld.rot.as_matrix())
     world_to_cam_rot = cam_frame.transToWorld.rot.inv()#.as_matrix()
+    # print(world_to_cam_rot.as_matrix())
 
     '''
     # front wheel to world rotation
@@ -152,29 +169,31 @@ def draw_curve(radius, cam_frame, mc_frame, pitch):
     '''
 
     mc_to_world_rot = mc_frame.transToWorld.rot
-
+    # print('mc')
+    # print(mc_to_world_rot.as_matrix())
     cam_rot = world_to_cam_rot * mc_to_world_rot
     cam_rot = cam_rot.as_matrix()
 
 
-    # print(cam_rot)
+    print('cam_rot')
     homog_rot = np.identity(cam_rot.shape[0]+1)
     homog_rot[:-1,:-1] = cam_rot
     homog_rot[-1,-1] = 1
-
+    print(homog_rot)
+    # quit()
     # homogeneous camera translation
     # cam_trans = cam_frame.transToWorld.trans - fw_frame.transToWorld.trans
     cam_trans = cam_frame.transToWorld.trans - mc_frame.transToWorld.trans
     homog_pos = np.identity(4)
     homog_pos[:-1, -1] = -cam_trans
-    print('cam_trans')
-    print(-cam_trans)
+    # print('cam_trans')
+    # print(-cam_trans)
     # print(homog_pos)
     # print(homog_rot)
     # quit()
     # combine trans and rot
     trans_rot = np.dot(homog_pos, homog_rot)
-    trans_rot = trans_rot
+    # trans_rot = trans_rot
 
     # print(trans_rot)
 
@@ -185,9 +204,9 @@ def draw_curve(radius, cam_frame, mc_frame, pitch):
     # put all together --> camera matrix C
     K = np.dot(pixel_mat, focal_mat)
     C = np.dot(K, trans_rot)
-
-    # print(K)
-    # print(C)
+    print('K, C')
+    print(K)
+    print(C)
     # print(curve4d.shape[0])
     curve_proj = np.zeros((curve4d.shape[0],2),dtype=np.float64)
 
@@ -216,6 +235,7 @@ def draw_curve(radius, cam_frame, mc_frame, pitch):
     # print(np.mean(curve_proj[1, :]))
 
     # print(curve_proj)
+    # quit()
     return curve_proj, top_view((x,z), trans_rot)
     # return curve_proj, top_view((x/factor,z/factor), trans_rot)
 

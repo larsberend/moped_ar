@@ -42,25 +42,25 @@ def mark_lanes(img, roll_angle):
     # print(vertices)
     roi_image = region_of_interest(img, vertices)
     # print(img.dtype)
-    # cv.imwrite('schaunwirmal.png', roi_image)
+    cv.imwrite('schaunwirmal.png', roi_image)
 
     gray = cv.cvtColor(roi_image, cv.COLOR_BGR2GRAY)
     kernel_size = 11
     gauss_gray = cv.GaussianBlur(gray, (kernel_size,kernel_size), 0)
-    # cv.imwrite('schaunwirmal0.png', gauss_gray)
+    cv.imwrite('schaunwirmal0.png', gauss_gray)
 
     # find canny edges in blurred, gray image
     low_threshold = 50
     high_threshold = 150
     aperture_size = 500
     canny_edges = cv.Canny(gauss_gray,low_threshold,high_threshold, aperture_size)
-    # cv.imwrite('schaunwirmal1.png', canny_edges)
+    cv.imwrite('schaunwirmal1.png', canny_edges)
 
     # only show edges in image and discard of edges found along sides of polygon
     mask_white = cv.inRange(canny_edges, 230, 255)
     mask_w_image = cv.bitwise_and(gauss_gray, mask_white)
     mask_w_image[mask_w_image<160] = 0
-    # cv.imwrite('schaunwirmal2.png', mask_w_image)
+    cv.imwrite('schaunwirmal2.png', mask_w_image)
 
     # rho and theta are the distance and angular resolution of the grid in Hough space
     # same values as quiz
@@ -158,7 +158,7 @@ def mark_lanes(img, roll_angle):
                 # print(ransac_y)
                 img[ransac_b[1], ransac_b[0]] = [255,0,0]
                 img[ransac_y[1], ransac_y[0]] = [0,255,255]
-                # cv.imwrite('schaunwirmal5.png', img)
+                cv.imwrite('schaunwirmal5.png', img)
 
 
 

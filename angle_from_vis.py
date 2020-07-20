@@ -10,6 +10,8 @@ from draw_curve import draw_curve
 from radius import turn
 import cv2 as cv
 from CMadgwick import CMad
+import skimage.transform as tf
+
 
 '''
 Plays frames from a video file and calculates the pitch angle of the camera
@@ -45,7 +47,8 @@ def angle_from_vis():
 
 
 
-        # frame = cv.imread('./problematic3.png')
+        frame = cv.imread('./problematic0_lines.png')
+        # frame = cv.imread('./calib_yb.png')
 
 
 
@@ -69,9 +72,10 @@ def angle_from_vis():
 
 
             # first step: color 2 lines belonging to road markings in video
-            marked_im, hough_im, retval = mark_lanes(frame, -ori_eul[2])
+            # marked_im, hough_im, retval = mark_lanes(frame, -ori_eul[2])
             # marked_im, hough_im, retval = mark_lanes(frame, 0.340036930698958)
-
+            marked_im, hough_im, retval = mark_lanes(frame, 0.234190505239813)
+            # marked_im, hough_im, retval = mark_lanes(frame, 0)
 
 
 
@@ -98,6 +102,16 @@ def angle_from_vis():
                         # slope_y, intercept_y = linregress(yellow_warp[1], yellow_warp[0])[:2]
                         # slope_b, intercept_b = linregress(blue_warp[1], blue_warp[0])[:2]
                     print((slope, inter1, inter2))
+                    scale = tf.AffineTransform(scale=(1, 1.739))
+                    scaled_img = tf.warp(bird_im, inverse_map=scale)
+                    # scaled_img *= 255
+                    bird_im = scaled_img
+                    cv.imwrite('rotated_and_scaled.png', bird_im)
+                    print(cam_origin)
+                    cam_origin = np.where(np.all(bird_im == [0,0,255], axis=-1))
+                    cam_origin = (cam_origin[0][0], cam_origin[1][0])
+                    print(cam_origin)
+                    # quit()
                     road_mark_distance = dist(slope, inter1, inter2)
                     print('mark distance:')
                     print(road_mark_distance)
@@ -107,12 +121,18 @@ def angle_from_vis():
 
 
                     # radius = -111.83459873843
+                    radius = -130.946140709033 # problematic0
+                    # radius = -130946140709033
+                    # radius =
 
 
                     radius_pixel = radius * pixel_meter
                     grav_center_px = grav_center * pixel_meter
+                    fw_point = cam_origin
+                    # fw_point = cam_origin[0] + dx(grav_center_px, 0), cam_origin[1] + dy(grav_center_px, 0)
 
-                    fw_point = cam_origin[0] + dx(grav_center_px, slope), cam_origin[1] + dy(grav_center_px, slope)
+
+                    # fw_point = cam_origin[0] + dx(grav_center_px, slope), cam_origin[1] + dy(grav_center_px, slope)
 
 
 
@@ -129,8 +149,7 @@ def angle_from_vis():
                     # other_possible_circle_center = (fw_point[0] - dx(radius_pixel, slope), fw_point[1] - dy(radius_pixel, slope)) # going the other way
                     # print(circle_center)
                     # print(other_possible_circle_center)
-
-
+                    '''
                     circle_center = (fw_point[0] + dx(radius_pixel, perp_slope), fw_point[1] + dy(radius_pixel, perp_slope))
                     other_possible_circle_center = (fw_point[0] - dx(radius_pixel, perp_slope), fw_point[1] - dy(radius_pixel, perp_slope)) # going the other way
 
@@ -138,16 +157,27 @@ def angle_from_vis():
                     print(other_possible_circle_center)
                     # bird_im = cv.line(bird_im, pt1=(np.int32(fw_point[1]), fw_point[0]), pt2=(np.int32(circle_center[1]), np.int32(circle_center[0])), color=(0,255,0))
                     print(fw_point)
-                    if ori_eul[2] > 0:
-                        rr,cc = circle_perimeter(np.int64(circle_center[0]), np.int64(circle_center[1]), np.int64(np.abs(radius_pixel)), shape = bird_im.shape)
-                    else:
-                        rr,cc = circle_perimeter(np.int64(other_possible_circle_center[0]), np.int64(other_possible_circle_center[1]), np.int64(np.abs(radius_pixel)), shape = bird_im.shape)
+                    '''
+                    # if ori_eul[2] > 0:
+                    #     rr,cc = circle_perimeter(np.int64(circle_center[0]), np.int64(circle_center[1]), np.int64(np.abs(radius_pixel)), shape = bird_im.shape)
+                    # else:
+                    #     rr,cc = circle_perimeter(np.int64(other_possible_circle_center[0]), np.int64(other_possible_circle_center[1]), np.int64(np.abs(radius_pixel)), shape = bird_im.shape)
+                    # rr,cc = circle_perimeter(np.int64(other_possible_circle_center[0]), np.int64(other_possible_circle_center[1]), np.int64(np.abs(radius_pixel)), shape = bird_im.shape)
+                    circle_center = (fw_point[0], fw_point[1]-radius_pixel)
+                    # circle_center = (fw_point[0], fw_point[1])
+                    print(circle_center)
+                    rr,cc = circle_perimeter(np.int64(circle_center[0]), np.int64(circle_center[1]), np.int64(np.abs(radius_pixel)), shape = bird_im.shape)
+                    # rr,cc = circle_perimeter(np.int64(circle_center[1]), np.int64(circle_center[0]), np.int64(np.abs(20)), shape = bird_im.shape)
+
+
+
+                    # rr,cc = circle_perimeter(np.int64(circle_center[0]), np.int64(circle_center[1]), np.int64(np.abs(radius_pixel)), shape = bird_im.shape)
 
                     # print(perimeter[0].shape)
                     # print(perimeter)
                     # print(rr,cc)
                     bird_im[rr,cc] = [0,0,255]
-                    line_thickness = 20
+                    line_thickness = 10
 
                     rr[rr<line_thickness] = 0
                     # cc[cc<line_thickness] = 0
@@ -165,13 +195,13 @@ def angle_from_vis():
                     # bird_im[rr-2, cc-2] = [0,0,255]
 
 
-                    # cv.imwrite('finally.png', bird_im)
+                    cv.imwrite('finally.png', bird_im)
                     #
                     # back_rot = R.from_euler('xyz', [0, angle_calc, 0], degrees=False).as_matrix()
                     # back_rot = np.linalg.inv(back_rot)
                     # H = get_homography2(back_rot, K)
                     # backwarp = back_warp(bird_im, H, dst_height=1080-630, dst_width=1920)
-                    # quit()
+                    quit()
 
 
                 else:
