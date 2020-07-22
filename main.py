@@ -208,7 +208,7 @@ def main():
             amount_lines = curve_proj.shape[0]-1
             for j in range(curve_proj.shape[0]-1):
                 # cv.line(frame, (curve_proj[j,0], curve_proj[j,1]), (curve_proj[j+1,0], curve_proj[j+1,1]), (0,255,0), thickness = 5)
-                cv.line(frame, (curve_proj[j,0], curve_proj[j,1]), (curve_proj[j+1,0], curve_proj[j+1,1]), (0,255,0), thickness = 1)
+                cv.line(frame, (curve_proj[j,0], curve_proj[j,1]), (curve_proj[j+1,0], curve_proj[j+1,1]), (0,0,255), thickness = 1)
                 # print(((curve_proj[j,0], curve_proj[j,1]), (curve_proj[j+1,0], curve_proj[j+1,1])))
                 # b,g,r = frame[curve_proj[j][0],curve_proj[j][1]]
                 # cv.circle(frame, (curve_proj[j,0], curve_proj[j,1]), 5, (0,255,0))
@@ -229,7 +229,8 @@ def main():
 
             # save every frame as png
             # frame = skimage.transform.rotate(frame, 1, clip=True, preserve_range=True)
-            cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_processed/%s.png'%(file, frame_nr_int), frame)
+            cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_horizon/%s.png'%(file, frame_nr_int), frame)
+            # cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_processed/%s.png'%(file, frame_nr_int), frame)
             # quit()
             print(frame_nr_int)
             cv.imshow(file, frame)
