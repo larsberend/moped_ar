@@ -1,17 +1,19 @@
 import numpy as np
-
-
+'''
+Madgwick filter. Original C-Code by Sebastian Madgwick:
+https://x-io.co.uk/open-source-imu-and-ahrs-algorithms/
+'''
 class CMad():
 	def __init__(self, freq=400, gain=0.01):
-		self.sampleFreq = np.double(freq) # sample frequency in Hz
+		self.sampleFreq = np.double(freq) 		  # sample frequency in Hz
 		self.betaDef = np.double(gain)		      # 2 * proportional gain
 
 		# ---------------------------------------------------------------------------------------------------
 		# Variable definitions
 
-		self.beta = self.betaDef							# 2 * proportional gain (Kp)
+		self.beta = self.betaDef				  # 2 * proportional gain (Kp)
 		self.quat = np.double((1,0,0,0))
-		q0, q1, q2, q3 = self.quat	        # quaternion of sensor frame relative to auxiliary frame
+		q0, q1, q2, q3 = self.quat	        	  # quaternion of sensor frame relative to auxiliary frame
 
 
 	def MadgwickAHRSupdateIMU(self, gx, gy, gz, ax, ay, az):

@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib
 import numpy as np
 import pandas as pd
 from scipy.spatial.transform import Rotation  as R
@@ -7,6 +8,7 @@ import matplotlib
 Visualize data in plots.
 
 '''
+complete_file = '../100GOPRO/kandidaten/csv/3_2-gyroAcclGpsRA_scharfRechts.csv'
 # complete_file = '../100GOPRO/testfahrt_1006/kandidaten/csv/3_0-gyroAcclGpsMadgwickQuat.csv'
 # gps_file = '../100GOPRO/kandidaten/csv/3_2-gps.csv'
 # gyro_file = '../100GOPRO/kandidaten/csv/2_3-gyro.csv'
@@ -89,7 +91,7 @@ def plot_angles(filename):
     ax1.plot(time, eul[:,1], label= 'Y', linewidth=1, color= 'green')
     print(np.mean(eul[:1]))
     # ax1.plot(time, eul[:,2], label= 'Z', linewidth=1, color='blue')
-    ax1.plot(pitch_time, np.full_like(pitch_time, fill_value=41), label= 'asd', linewidth=1, color='black')
+    ax1.plot(pitch_time, np.full_like(pitch_time, fill_value=42), label= '42', linewidth=1, color='black')
     ax1.scatter(pitch_time[1:], pitch[1:], label= 'pitch from vis', linewidth=1, color='gold')
     plt.xlabel('time in ms')
     plt.ylabel('Angle in degree')
@@ -106,10 +108,10 @@ def plot_angles(filename):
     vel_t = veltime[:,1]
     #
     # ax2.plot(vel_t, vel, label= 'Velocity minus mean (%s)'%(np.mean(veltime[:,0])), linewidth=1, color='black')   #TODO radius Radius in radius.py
-    ax2.plot(vel_t, vel_diff, label= 'Acceleration', linewidth=1, color='purple')   #TODO radius Radius in radius.py
+    # ax2.plot(vel_t, vel_diff, label= 'Acceleration', linewidth=1, color='purple')   #TODO radius Radius in radius.py
     # # ax2.plot(vel_t, np.full_like(vel_t, fill_value=np.mean(vel)) , label= str(np.mean(vel)), linewidth=1, color='darkgreen')   #TODO radius Radius in radius.py
     # plt.ylim(np.amin(vel), np.amax(vel), 25)
-    plt.ylabel('Vel in m/s')
+    # plt.ylabel('Vel in m/s')
     leg = plt.legend()#loc=9)
     for lh in leg.legendHandles:
         lh._legmarker.set_alpha(0)
@@ -126,7 +128,8 @@ def plot_gyro(filename):
     complete = pd.read_csv(filename)
 
     gyro_complete = complete[['Milliseconds', 'GyroX', 'GyroY', 'GyroZ']]
-    RadAng = complete[['Milliseconds', 'Radius', 'Angle']]
+    RadAng = complete[['Milliseconds', 'radius', 'Angle', 'Speed']]
+    # RadAng = complete[['Milliseconds', 'Radius', 'Angle']]
     # euler = complete[['Milliseconds', 'X', 'Y', 'Z']]
 
     # print(gyro_complete.head())
@@ -136,34 +139,38 @@ def plot_gyro(filename):
     time = gyro_complete[['Milliseconds']].to_numpy(dtype='float64')
     print(type(time))
     # plt.figure(figsize=(100,10))
+    matplotlib.rcParams.update({'font.size': 24})
     fig, ax1 = plt.subplots()
+    # plt.title('Gyro-Data, Roll-Angle & Radius')
 
-    plt.title('Gyro-Data: Right turn')
-
-    ax1.plot(time, gyro_complete[['GyroX']].to_numpy(dtype='float64'), label= 'GyroX', linewidth=1)
-    ax1.plot(time, gyro_complete[['GyroY']].to_numpy(dtype='float64'), label= 'GyroY', linewidth=1)
-    ax1.plot(time, gyro_complete[['GyroZ']].to_numpy(dtype='float64'), label= 'GyroZ', linewidth=1)
-    ax1.plot(time, RadAng[['Angle']].to_numpy(dtype='float64'), label= 'MadAngle', linewidth=1)
+    ax1.plot(time, np.degrees(gyro_complete[['GyroX']].to_numpy(dtype='float64')), label= 'X- (Yaw-) rate in deg/s', linewidth=1, color='red')
+    ax1.plot(time, np.degrees(gyro_complete[['GyroY']].to_numpy(dtype='float64')), label= 'Y- (Pitch-) rate in deg/s', linewidth=1, color='green')
+    ax1.plot(time, np.degrees(gyro_complete[['GyroZ']].to_numpy(dtype='float64')), label= 'Z- (Roll-) rate in deg/s', linewidth=1, color='lightblue')
+    ax1.plot(time, np.degrees(RadAng[['Angle']].to_numpy(dtype='float64')), label= 'Roll Angle', linewidth=1, color='blue')
     # ax1.plot(time, euler[['X']], label= 'EulerX', linewidth=0.2)
     # ax1.plot(time, euler[['Y']], label= 'EulerY', linewidth=0.2)
     # ax1.plot(time, euler[['Z']], label= 'MadAngle', linewidth=0.2)
 
     plt.xlabel('time in ms')
-    plt.ylabel('value of sensor in rad/s\nAngle in rad')
+    plt.ylabel('value of sensor in deg/s\nAngle in deg')
 
     leg = plt.legend()
     for lh in leg.legendHandles:
         lh._legmarker.set_alpha(0)
 
     ax2 = ax1.twinx()
-    ax2.plot(time, RadAng[['Radius']], label= 'MadRadius', linewidth=1, color='black')   #TODO radius Radius in radius.py
+    ax2.plot(time, RadAng[['radius']], label= 'Radius', linewidth=1, color='black')   #TODO radius Radius in radius.py
+    # ax2.scatter(time, RadAng[['Speed']], label= 'Speed', linewidth=1, color='black')
+    # print(RadAng[['Speed']])
+    # quit()
+    # ax2.plot(time, RadAng[['Radius']], label= 'Radius', linewidth=1, color='black')   #TODO radius Radius in radius.py
     plt.ylim(-100, 100)
     plt.ylabel('Radius in m')
     leg = plt.legend()#loc=9)
     for lh in leg.legendHandles:
         lh._legmarker.set_alpha(0)
     fig.tight_layout()
-    plt.gcf().set_size_inches(200, 10)
+    plt.gcf().set_size_inches(20, 10)
     plt.savefig(filename + '.png')
     # plt.show()
 
@@ -190,9 +197,9 @@ def plot_accl(filename):
 
 if __name__ == '__main__':
     # plot_gps(gps_file)
-   # plot_gyro(complete_file)
+   plot_gyro(complete_file)
 #    plot_accl(accl_file)
-    plot_angles('../100GOPRO/testfahrt_1006/kandidaten/csv/%s-gyroAcclGpsMadgwickQuat.csv'%('3_2'))
+    # plot_angles('../100GOPRO/testfahrt_1006/kandidaten/csv/%s-gyroAcclGpsMadgwickQuat.csv'%('3_2'))
     # for f in ['1_0', '2_0', '2_1', '2_2', '2_3', '2_4', '3_0', '3_1']:
     #     plot_angles('../100GOPRO/testfahrt_1006/kandidaten/csv/%s-gyroAcclGpsMadgwickQuat.csv'%(f))
     #     print(f)
