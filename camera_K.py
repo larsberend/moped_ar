@@ -1,6 +1,6 @@
 import numpy as np
 
-f = 16.4104
+f = 0.00164104
 u0 = 960
 v0 = 540
 
@@ -20,4 +20,4 @@ K = np.dot(pixel_mat, focal_mat)
 
 # print(focal_mat)
 # print(pixel_mat)
-# print(K)
+print(K)
