@@ -18,6 +18,10 @@ focal_mat = np.array([[f,0,0],
 
 K = np.dot(pixel_mat, focal_mat)
 
+
+K_homog = np.zeros((3,4))
+K_homog[:, :-1] = K
 # print(focal_mat)
 # print(pixel_mat)
 print(K)
+print(K_homog)

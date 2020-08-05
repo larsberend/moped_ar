@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
-from birdview import birdview, back_warp, get_homography2, K
+from birdview import birdview, back_warp, get_homography2
+from camera_K import K_homog as K
 from mark_lanes import mark_lanes
 from cordFrames import cordFrame, worldFrame, transform, get_cordFrames
 from scipy.spatial.transform import Rotation as R # quaternion in scalar-last
@@ -21,7 +22,7 @@ Takes Roll-Angle from Gyro and writes angle in each frame (if found) to csv.
 
 def angle_from_vis():
     angle_calc = None
-    world_frame, fw_frame, cam_frame, imu_frame = get_cordFrames()
+    world_frame, fw_frame, cam_frame, imu_frame, mc_frame = get_cordFrames()
     csv_path = '../100GOPRO/testfahrt_1006/kandidaten/csv/'
     video_path = '../100GOPRO/testfahrt_1006/kandidaten/'
     file = '3_2'
@@ -176,17 +177,18 @@ def angle_from_vis():
                     # print(perimeter[0].shape)
                     # print(perimeter)
                     # print(rr,cc)
-                    bird_im[rr,cc] = [0,0,255]
-                    line_thickness = 10
-
-                    rr[rr<line_thickness] = 0
-                    # cc[cc<line_thickness] = 0
-                    rr[rr>bird_im.shape[0] - line_thickness] = 0
-                    # cc[cc>bird_im.shape[1] - line_thickness] = 0
-
-                    for i in range(1,line_thickness):
-                        bird_im[rr+i, cc] = [0,0,255]
-                        bird_im[rr-i, cc] = [0,0,255]
+                    
+                    # bird_im[rr,cc] = [0,0,255]
+                    # line_thickness = 10
+                    #
+                    # rr[rr<line_thickness] = 0
+                    # # cc[cc<line_thickness] = 0
+                    # rr[rr>bird_im.shape[0] - line_thickness] = 0
+                    # # cc[cc>bird_im.shape[1] - line_thickness] = 0
+                    #
+                    # for i in range(1,line_thickness):
+                    #     bird_im[rr+i, cc] = [0,0,255]
+                    #     bird_im[rr-i, cc] = [0,0,255]
 
 
                     # bird_im[rr+1, cc+1] = [0,0,255]
@@ -223,7 +225,7 @@ def angle_from_vis():
         if cv.waitKey(1) & 0xFF == ord('q'):
             pitch_df = pd.DataFrame(data=pitch_angles, columns=['Milliseconds', 'Pitch_from_vis'])
             # print(csv_path + file + '-pitch.csv')
-            pitch_df.to_csv(csv_path + file + '-pitch.csv')
+            # pitch_df.to_csv(csv_path + file + '-pitch.csv')
 
             # When everything done, release the capture
             cap.release()

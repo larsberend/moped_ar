@@ -47,14 +47,14 @@ Updates camera-parameters with data from IMU.
 '''
 
 def main():
-    bv = False
+    bv = True
     angle_calc = None
     world_frame, fw_frame, cam_frame, imu_frame, mc_frame = get_cordFrames()
 
     csv_path = '../100GOPRO/testfahrt_1006/kandidaten/csv/'
     video_path = '../100GOPRO/testfahrt_1006/kandidaten/'
     file = '3_2'
-    start_msec = 4000.0
+    start_msec = 000.0
     font = cv.FONT_HERSHEY_SIMPLEX
     calib_pitch_from_vis = 0.698131700797732
 
@@ -66,7 +66,11 @@ def main():
     if bv:
         pitch_df = pd.read_csv(csv_path + file + '-pitch.csv')
         pitch_np = pitch_df[['Milliseconds', 'Pitch_from_vis']].to_numpy().swapaxes(1,0)
-
+        for i in np.arange(pitch_np[1].size):
+            if pitch_np[1,i]!=0:
+                last_value = pitch_np[1,i]
+            else:
+                pitch_np[1,i] = last_value
 
     cap = cv.VideoCapture(video_path + file + '.mp4')
     # out = cv.VideoWriter('3_2_curve.avi', cv.VideoWriter_fourcc('M','J','P','G'), 59.94, (1920,1080))
@@ -78,8 +82,8 @@ def main():
     # orig_frame = cv.resize(orig_frame, (1920, 1080))
     while(cap.isOpened()):
         # capture frame-by-frame
-        # ret, frame = cap.read()
-        frame = orig_frame.copy()
+        ret, frame = cap.read()
+        # frame = orig_frame.copy()
         if ret:
             # print('ret')
             height,width = frame.shape[:2]
@@ -98,16 +102,19 @@ def main():
             fw_trans = transform([0,0,0], ori_x_fw.as_quat())
             # fw_frame.update_ori(fw_trans)
 
-            ori_z_imu = R.from_euler('xyz',[0, 0, -ori_eul[2]], degrees=False)
+            ori_z_imu = R.from_euler('xyz',[0, 0, -2 * ori_eul[2]], degrees=False)
+            # ori_z_imu = R.from_euler('xyz',[0, 0, -90], degrees=True)
             new_mc = ori_z_imu.apply([0,0.5,0])
             # print(new_mc)
-            new_mc = [new_mc[0], 0, -0.7105]
-            # new_mc = [0, 0, 0.7105]
+            # new_mc = [new_mc[0], 0, -0.7105]
+            new_mc = [new_mc[0], 0, 0.7105]
             mc_frame.update_ori(transform(new_mc, [0,0,0,1]))
             print(mc_frame)
             vis_pitch = None
             if bv == True:
                 vis_pitch = pitch_np[1, frame_nr_int]
+                print(pitch_np)
+                # quit()
                 if np.isnan(vis_pitch) == False:
                     # print(pitch_np)
                     # print(pitch_np.shape)
@@ -130,7 +137,7 @@ def main():
                     '''
                     print(pitch)
 
-                    ori_yz = R.from_euler('xyz', [0, -pitch, -ori_eul[2]])
+                    ori_yz = R.from_euler('xyz', [0, -pitch, -2 * ori_eul[2]])
                     # ori_yz = R.from_euler('xyz', [0, -pitch, -np.radians(frame_nr_int)])
                     print('\n')
                     print(-ori_eul[2])
@@ -142,6 +149,7 @@ def main():
                                                             [0, 0, np.sin(np.pi/4),np.cos(np.pi/4)],
                                                             [np.sin(np.pi/2), 0, 0, np.cos(np.pi/2)],
                                                             ori_yz.as_quat()
+                                                            ,R.from_euler('xyz', [0,15,0], degrees=True).as_quat()
                                                             ]
                                          )
                     # check if Euler conversion returns same Quaternion:
@@ -152,7 +160,7 @@ def main():
 
 
             else:
-                print('else: ')
+                print('\n\n\nElse!! \n\n\n')
                 ori_z_imu = R.from_euler('xyz',[0, 0, -np.radians(frame_nr_int)], degrees=False)
                 # ori_z_imu_pos = R.from_euler('xyz',[0, 0, -ori_eul[2]], degrees=False)
 
@@ -192,35 +200,16 @@ def main():
             # curve_proj, top_view = draw_curve(radius, cam_frame, fw_frame, vis_pitch)
             # curve_proj, top_view = draw_curve(radius, cam_frame, fw_frame, None)
             curve_proj, top_view = draw_curve(radius, cam_frame, mc_frame, None)
-            # print(type(curve_proj))
+            hori_proj, _ = draw_curve(radius, cam_frame, mc_frame, None, True)
             curve_proj=curve_proj[curve_proj[:,0]>=0].astype(np.int32)
-            # curve_proj=curve_proj[curve_proj[:,0]<1920]
-            # curve_proj=curve_proj[curve_proj[:,1]<1080]
-
-
-
-            # frame2 = np.zeros_like(frame)
-            # frame2 = frame.copy()
-            # a = curve_proj.astype(np.int32),curve_proj[1:].astype(np.int32)
-            # print(curve_proj.shape[0])
-
-            # print(curve_proj)
             amount_lines = curve_proj.shape[0]-1
             for j in range(curve_proj.shape[0]-1):
-                # cv.line(frame, (curve_proj[j,0], curve_proj[j,1]), (curve_proj[j+1,0], curve_proj[j+1,1]), (0,255,0), thickness = 5)
-                cv.line(frame, (curve_proj[j,0], curve_proj[j,1]), (curve_proj[j+1,0], curve_proj[j+1,1]), (0,0,255), thickness = 1)
-                # print(((curve_proj[j,0], curve_proj[j,1]), (curve_proj[j+1,0], curve_proj[j+1,1])))
-                # b,g,r = frame[curve_proj[j][0],curve_proj[j][1]]
-                # cv.circle(frame, (curve_proj[j,0], curve_proj[j,1]), 5, (0,255,0))
-                # print(int(255/(j+1)))
-                # cv.line(frame, tuple(a[0][j]), tuple(a[1][j]), (int(b), int(g), int(255/(j+1))), 10, lineType=cv.LINE_8)
-            # quit()
-            # frame2[frame2==0] = frame[frame2==0]
-            # frame = cv.addWeighted(frame, 0.5,frame2, 0.5, 0)
+                cv.line(frame, (curve_proj[j,0], curve_proj[j,1]), (curve_proj[j+1,0], curve_proj[j+1,1]), (0,0,255), thickness = 5)
 
-            # frame = ((frame+frame2)/2).astype(np.uint8)
-            # frame[frame>255]=255
-            # cv.circle(frame, (956,559), 10, (255,0,0))
+            hori_proj=hori_proj[hori_proj[:,0]>=0].astype(np.int32)
+            amount_l = hori_proj.shape[0]-1
+            for j in range(hori_proj.shape[0]-1):
+                cv.line(frame, (hori_proj[j,0], hori_proj[j,1]), (hori_proj[j+1,0], hori_proj[j+1,1]), (0,255,0), thickness = 3)
 
 
             x_offset = width - top_view.shape[1]
@@ -229,8 +218,8 @@ def main():
 
             # save every frame as png
             # frame = skimage.transform.rotate(frame, 1, clip=True, preserve_range=True)
-            cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_horizon/%s.png'%(file, frame_nr_int), frame)
-            # cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_processed/%s.png'%(file, frame_nr_int), frame)
+            # cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_horizon/%s.png'%(file, frame_nr_int), frame)
+            cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_processed/%s.png'%(file, frame_nr_int), frame)
             # quit()
             print(frame_nr_int)
             cv.imshow(file, frame)
