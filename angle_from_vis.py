@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
-from birdview import birdview, back_warp, get_homography2
+from birdview import birdview, get_homography2
 from camera_K import K_homog as K
-from mark_lanes import mark_lanes
+# from mark_lanes import mark_lanes
+from road_markings import get_markings
 from cordFrames import cordFrame, worldFrame, transform, get_cordFrames
 from scipy.spatial.transform import Rotation as R # quaternion in scalar-last
 from scipy.stats import linregress
@@ -26,7 +27,7 @@ def angle_from_vis():
     csv_path = '../100GOPRO/testfahrt_1006/kandidaten/csv/'
     video_path = '../100GOPRO/testfahrt_1006/kandidaten/'
     file = '3_2'
-    start_msec = 00.0
+    start_msec = 4888.22155489#2819.48615282
     font = cv.FONT_HERSHEY_SIMPLEX
     grav_center = 2.805
 
@@ -41,14 +42,14 @@ def angle_from_vis():
     pitch_angles = np.zeros((np.int32(cap.get(7)),2))
     cap.set(0, start_msec)
     # int counting frames(for saving snapshots)
-    frame_nr_int = 0
+    frame_nr_int = 293#169
     while(cap.isOpened()):
         # capture frame-by-frame
         ret, frame = cap.read()
 
 
 
-        frame = cv.imread('./problematic0_lines.png')
+        # frame = cv.imread('./problematic0.png')
         # frame = cv.imread('./calib_yb.png')
 
 
@@ -73,9 +74,10 @@ def angle_from_vis():
 
 
             # first step: color 2 lines belonging to road markings in video
+            marked_im, hough_im, retval = get_markings(frame, ori_eul[2])
             # marked_im, hough_im, retval = mark_lanes(frame, -ori_eul[2])
             # marked_im, hough_im, retval = mark_lanes(frame, 0.340036930698958)
-            marked_im, hough_im, retval = mark_lanes(frame, 0.234190505239813)
+            # marked_im, hough_im, retval = mark_lanes(frame, 0.234190505239813) # problematic0.png
             # marked_im, hough_im, retval = mark_lanes(frame, 0)
 
 
@@ -86,10 +88,10 @@ def angle_from_vis():
             bird_im = np.zeros((frame.shape[1], frame.shape[0], 3))
 
             # if coloring worked, find angle via iterating over a transform
-            # closing in on a birdview (==> road markings parallel)
+            # closing in on a birdview (==> road markings equidistant)
             if retval:
                 bird_im, angle_calc, found, slope, inter1, inter2, yellow_warp, blue_warp, cam_origin = birdview(marked_im, False, angle_calc)
-                if found:
+                if found and np.isnan(slope)==False:
                     # print(angle_calc)
                     # quit()
 
@@ -108,11 +110,20 @@ def angle_from_vis():
                     # scaled_img *= 255
                     bird_im = scaled_img
                     cv.imwrite('rotated_and_scaled.png', bird_im)
-                    print(cam_origin)
                     cam_origin = np.where(np.all(bird_im == [0,0,255], axis=-1))
                     cam_origin = (cam_origin[0][0], cam_origin[1][0])
-                    print(cam_origin)
+
+                    last_nonblack_row = np.amax(np.where(np.all(bird_im!=[0,0,0], axis=-1))[0])
+                    # print(np.where(np.all(bird_im!=[0,0,0], axis=-1)))
+                    print(last_nonblack_row)
                     # quit()
+                    bird_im = bird_im[:last_nonblack_row]
+
+                    bird_im = bird_im[:, max(cam_origin[1]-1000, 0):min(cam_origin[1]+1000, 4000)]
+                    cv.imwrite('rot_sc_cut.png', bird_im)
+                    cam_origin = np.where(np.all(bird_im == [0,0,255], axis=-1))
+                    cam_origin = (cam_origin[0][0], cam_origin[1][0])
+
                     road_mark_distance = dist(slope, inter1, inter2)
                     print('mark distance:')
                     print(road_mark_distance)
@@ -122,7 +133,7 @@ def angle_from_vis():
 
 
                     # radius = -111.83459873843
-                    radius = -130.946140709033 # problematic0
+                    # radius = -130.946140709033 # problematic0
                     # radius = -130946140709033
                     # radius =
 
@@ -177,18 +188,18 @@ def angle_from_vis():
                     # print(perimeter[0].shape)
                     # print(perimeter)
                     # print(rr,cc)
-                    
-                    # bird_im[rr,cc] = [0,0,255]
-                    # line_thickness = 10
+
+                    bird_im[rr,cc] = [0,0,255]
+                    line_thickness = 10
+
+                    rr[rr<line_thickness] = 0
+                    # cc[cc<line_thickness] = 0
+                    rr[rr>bird_im.shape[0] - line_thickness] = 0
+                    # cc[cc>bird_im.shape[1] - line_thickness] = 0
                     #
-                    # rr[rr<line_thickness] = 0
-                    # # cc[cc<line_thickness] = 0
-                    # rr[rr>bird_im.shape[0] - line_thickness] = 0
-                    # # cc[cc>bird_im.shape[1] - line_thickness] = 0
-                    #
-                    # for i in range(1,line_thickness):
-                    #     bird_im[rr+i, cc] = [0,0,255]
-                    #     bird_im[rr-i, cc] = [0,0,255]
+                    for i in range(1,line_thickness):
+                        bird_im[rr+i, cc] = [0,0,255]
+                        bird_im[rr-i, cc] = [0,0,255]
 
 
                     # bird_im[rr+1, cc+1] = [0,0,255]
@@ -203,9 +214,8 @@ def angle_from_vis():
                     # back_rot = np.linalg.inv(back_rot)
                     # H = get_homography2(back_rot, K)
                     # backwarp = back_warp(bird_im, H, dst_height=1080-630, dst_width=1920)
-                    quit()
-
-
+                    # quit()
+                    bird_im = cv.resize(bird_im, (np.int32(bird_im.shape[1]/2), np.int32(bird_im.shape[0]/2)))
                 else:
                     print('No fitting angle found. Best guess:')
                     print(angle_calc)
