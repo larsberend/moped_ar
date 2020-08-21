@@ -1,12 +1,10 @@
 import math
 import numpy as np
 import cv2 as cv
-import requests
-from bs4 import BeautifulSoup
-import urllib
 from urllib3 import PoolManager
 import pandas as pd
 from skimage.draw import circle_perimeter
+import skimage.transform
 
 R = 6371000
 
@@ -110,22 +108,38 @@ def get_map(lat_deg, lon_deg, zoom):
     return map
 
 
-def map_traj(map, radius, slope, px_m):
+def map_traj(map, radius, slope, px_m, gps_px):
+
+    # if radius > 0:
+    #     slope *= -1
     rad_px = px_m * radius
-    gps_x, gps_y = np.where(np.all(map == [0,0,255], axis=-1))
-    print((gps_x, gps_y))
+
+
+    gps_x, gps_y = gps_px
+    # gps_x, gps_y = np.where(np.all(map == [0,0,255], axis=-1))
+    # print((gps_x, gps_y))
     # quit()
+    '''
     perp_slope = -slope
+
 
     circle_center = (gps_x + dx(rad_px, perp_slope), gps_y + dy(rad_px, perp_slope))
     other_possible_circle_center = (gps_x - dx(rad_px, perp_slope), gps_y - dy(rad_px, perp_slope)) # going the other way
-    print(slope)
-    print(circle_center)
-    print(other_possible_circle_center)
+    print('Slope: %s'%(slope))
+    print('Radius: %s'%(radius))
+    print('circle_center: %s, %s'%circle_center)
+    # print('other_possible_circle_center: %s, %s'%other_possible_circle_center)
 
     rr,cc = circle_perimeter(np.int64(circle_center[0][0]), np.int64(circle_center[1][0]), np.int64(np.abs(rad_px)), shape=map.shape)
     # rr,cc = circle_perimeter(np.int64(other_possible_circle_center[0][0]), np.int64(other_possible_circle_center[1][0]), np.int64(np.abs(rad_px)), shape=map.shape)
+    '''
 
+    # slope of line orthogonal to driving direction
+    # perp_slope = -1/slope
+    # center of curve is radius from motorcycle
+    circle_center = (gps_x, gps_y-rad_px)
+    print(circle_center)
+    rr,cc = circle_perimeter(np.int64(circle_center[0]), np.int64(circle_center[1]), np.int64(np.abs(rad_px)), shape = map.shape)
     map[rr,cc] = [0,0,255]
     # line_thickness = 3
     #
@@ -144,7 +158,8 @@ def map_traj(map, radius, slope, px_m):
     #
     # # map[min(rr+1, map.shape[0]), min(cc+1, map.shape[1])] = [0,0,255]
     # map[max(rr-1, 0), max(cc-1, 0)] = [0,0,255]
-    cv.circle(map, (np.int32(gps_y[0]), np.int32(gps_x[0])), 5, (0,255,0), thickness=-1)
+    # cv.circle(map, (np.int32(gps_y[0]), np.int32(gps_x[0])), 5, (0,255,0), thickness=-1)
+    cv.circle(map, (np.int32(gps_y), np.int32(gps_x)), 5, (0,255,0), thickness=-1)
     cv.imwrite('traj_map.png', map)
     return map
 
@@ -189,6 +204,13 @@ def dy(distance, m):
 def dx(distance, m):
     return distance * np.sqrt(1/((m**2)+1))
 
+def rotate_vec(origin, point, angle):
+    ox, oy = origin
+    px, py = point
+
+    qx = ox + np.cos(angle) * (px - ox) - np.sin(angle) * (py - oy)
+    qy = oy + np.sin(angle) * (px - ox) + np.cos(angle) * (py - oy)
+    return qx, qy
 
 
 if __name__=='__main__':
@@ -205,6 +227,7 @@ if __name__=='__main__':
     print(lat_lon_rad.shape)
     # quit()
     for x in np.arange(1, lat_lon_rad.shape[1]):
+        print((x, lat_lon_rad.shape[1]))
         gps = lat_lon_rad[0,x], lat_lon_rad[1,x]
         radius = lat_lon_rad[2,x]
 
@@ -213,24 +236,74 @@ if __name__=='__main__':
         pixel_meter = get_measures(xt, yt, zoom)
 
         gps_px = IMU_pos(gps[0], gps[1], zoom)
+
         last_gps_px = IMU_pos(last_gps[0], last_gps[1], zoom)
         gps_px = gps_px[0]+256, gps_px[1]+256
         last_gps_px = last_gps_px[0]+256, last_gps_px[1]+256
 
         # print(gps_px)
         # print(last_gps_px)
-
+        #     if radius > 0:
+        #         slope_px = -1
+        #     else:
+        #         slope_px = 1
+        # print('slope is at %s now.'%(slope_px))
+        # print('radius is %s'%(radius))
+        # else:
+        '''
         slope = (last_gps[1]-gps[1]) / (last_gps[0]-gps[0])
-        slope_px = (last_gps_px[1]-gps_px[1]) / (last_gps_px[0]-gps_px[0])
 
+        if (last_gps_px[0]-gps_px[0]) == 0:
+            print('division by zero')
+            rotate_angle = 180
+        else:
+            slope_px = (last_gps_px[1] - gps_px[1]) / (last_gps_px[0] - gps_px[0])
+            # rotate_angle =  -(90 + np.abs(np.degrees(0 - np.arctan(slope_px))))
+            rotate_angle =  np.degrees(0 - np.arctan(slope_px))
+            print(np.degrees(0-np.arctan(slope_px)))
+            # quit()
+        '''
+        slope_px = None
+        lat1, lon1 = np.radians(last_gps)
+        lat2, lon2 = np.radians(gps)
+
+        dLon = lon2 - lon1
+        y = np.sin(dLon) * np.cos(lat2)
+        xd = np.cos(lat1) * np.sin(lat2) - np.sin(lat1) * np.cos(lat2) *np.cos(dLon)
+
+        bearing = np.arctan2(y, xd) * 180 / np.pi
+        print(bearing)
+        if (bearing < 0):
+            bearing += 360;
+        rotate_angle = bearing
+
+        print('Rotate Angle: %s'%(rotate_angle))
+        # quit()
+        # rotate_angle = 90
+        rotated_map = skimage.transform.rotate(map, rotate_angle, resize=False,clip=True, preserve_range=True)
+
+        gps_zero = np.zeros((map.shape[0], map.shape[1], 1))
+        gps_zero[np.int32(gps_px[1]), np.int32(gps_px[0])] = 255
+        rot_gps_zero = skimage.transform.rotate(gps_zero, rotate_angle, resize=False,clip=True, preserve_range=True)
+        gps_rot = np.where(np.all(rot_gps_zero!=[0], axis=-1))
+        # print(np.unique(rot_gps_zero, return_counts=True))
+        rotated_gps_px = gps_rot[0][0], gps_rot[1][0]
+
+        # cv.imwrite('gps_zero.png', rot_gps_zero)
+        # rotated_gps_px = rotate_vec((256+128, 256+128), (gps_px[1], gps_px[0]), rotate_angle)
+
+        # print(np.where(np.all(map==[0,0,255], axis=-1)))
+        print(gps_px)
+        print(rotated_gps_px)
+        # quit()
         # print(slope)
         # print(slope_px)
 
         # cv.circle(map, (np.int32(last_gps_px[0]), np.int32(last_gps_px[1])), 5, (0,255,0))
-        cv.imwrite('last_gps.png', map)
-
-        traj_map = map_traj(map, radius, slope_px, pixel_meter)
+        # cv.imwrite('last_gps.png', rotated_map)
+        traj_map = map_traj(rotated_map, radius, slope_px, pixel_meter, rotated_gps_px)
         # cv.circle(map, (np.int32(gps_px[0]), np.int32(gps_px[1])), 5, (0,255,0), thickness=-1)
+        traj_map = skimage.transform.rotate(traj_map, -rotate_angle, resize=False, clip=True, preserve_range=True)
         cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/' + '3_2_osm/%s.png'%(x), traj_map)
         last_gps = gps
     # tile =get_tile(50.0377052, 9.2961994, 16)
