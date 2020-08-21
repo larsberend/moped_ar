@@ -148,16 +148,10 @@ def draw_curve(radius, cam_frame, mc_frame, pitch, horizon=False):
 
     return curve_proj, top_view((x,z), trans_rot, radius)
 
+
 # plot curve without camera perspective (from above, looking at world frame origin)
 # also vector describing camera-z-axis (to back of motorcycle)
 def top_view(curve2d, trans_rot, radius):
-    # print(trans_rot)
-    # vector in worldframe
-    # look_dir = [[0,0,0,1],[0,0,50,1]]
-    # homog_look_dir = np.dot(trans_rot, look_dir[0]), np.dot(trans_rot, look_dir[1])
-    # cam_z = homog_look_dir[0][0],homog_look_dir[0][2],homog_look_dir[1][0],homog_look_dir[1][2]
-    # print(int(radius))
-    # radius=50
     rr,cc = circle_perimeter(int(radius), 0, int(np.abs(radius)))
     rr = rr[cc>0]
     cc = cc[cc>0]

@@ -94,28 +94,43 @@ def iter_angle(last_angle, img, view, yellow, blue):
                 angle_guess = angle
                 # print((angle_guess,smallest_diff))
 
-            # check, if diff is smaller than 0.0001
-            tol = 1e-03
-            if np.isclose(smallest_diff, 0, rtol=1, atol=tol, equal_nan=False):
-                # make birdview image and save
-                print('Angle, smallest_diff:')
-                print((angle_guess,smallest_diff))
-                warped_img, yellow_warp, blue_warp, cam_origin = warp_img(img, H, angle_guess, True, yellow, blue)
-                slope_y, intercept_y = linregress(yellow_warp)[:2]
-                slope_b, intercept_b = linregress(blue_warp)[:2]
-                # cv.imwrite('schaunwirmal6.png', warped_img)
+        if smallest_diff < 0.001:
+            # make birdview image and save
+            print('Angle, smallest_diff:')
+            print((angle_guess,smallest_diff))
+            warped_img, yellow_warp, blue_warp, cam_origin = warp_img(img, H, angle_guess, True, yellow, blue)
+            slope_y, intercept_y = linregress(yellow_warp)[:2]
+            slope_b, intercept_b = linregress(blue_warp)[:2]
+            # cv.imwrite('schaunwirmal6.png', warped_img)
 
-                # rotate image back (see mark_lanes.py)
-                rotate_angle = np.degrees(0 - np.arctan(slope_b))
-                rotated_img = skimage.transform.rotate(warped_img, rotate_angle, clip=True, preserve_range=True)
-                # slope_b = 0
-                # cv.imwrite('bv_rotate_test.png', rotate_img)
+            # rotate image back (see mark_lanes.py)
+            rotate_angle = np.degrees(0 - np.arctan(slope_b))
+            rotated_img = skimage.transform.rotate(warped_img, rotate_angle, clip=True, preserve_range=True)
+            # slope_b = 0
+            # cv.imwrite('bv_rotate_test.png', rotate_img)
 
-                cv.putText(warped_img, 'Pitch Angle: %s'%(np.degrees(angle)), (10, 1650), font, 0.5, (255, 255, 0), 2, cv.LINE_AA)
-                cv.putText(warped_img, 'Smallest diff: %s'%(smallest_diff), (10, 1670), font, 0.5, (255, 255, 0), 2, cv.LINE_AA)
-                return rotated_img, angle_guess, True, slope_b, intercept_y, intercept_b, yellow_warp, blue_warp, cam_origin
-    # if no good angle found, return False and best guess
-    return warped_img, angle_guess, False, slope_b, intercept_y, intercept_b, None, None, None
+            cv.putText(warped_img, 'Pitch Angle: %s'%(np.degrees(angle)), (10, 1650), font, 0.5, (255, 255, 0), 2, cv.LINE_AA)
+            cv.putText(warped_img, 'Smallest diff: %s'%(smallest_diff), (10, 1670), font, 0.5, (255, 255, 0), 2, cv.LINE_AA)
+            return rotated_img, angle_guess, True, slope_b, intercept_y, intercept_b, yellow_warp, blue_warp, cam_origin
+
+    # make birdview image and save
+    print('Angle, smallest_diff:')
+    print((angle_guess,smallest_diff))
+    warped_img, yellow_warp, blue_warp, cam_origin = warp_img(img, H, angle_guess, True, yellow, blue)
+    slope_y, intercept_y = linregress(yellow_warp)[:2]
+    slope_b, intercept_b = linregress(blue_warp)[:2]
+    # cv.imwrite('schaunwirmal6.png', warped_img)
+
+    # rotate image back (see mark_lanes.py)
+    rotate_angle = np.degrees(0 - np.arctan(slope_b))
+    rotated_img = skimage.transform.rotate(warped_img, rotate_angle, clip=True, preserve_range=True)
+    # slope_b = 0
+    # cv.imwrite('bv_rotate_test.png', rotate_img)
+
+    cv.putText(warped_img, 'Pitch Angle: %s'%(np.degrees(angle)), (10, 1650), font, 0.5, (255, 255, 0), 2, cv.LINE_AA)
+    cv.putText(warped_img, 'Smallest diff: %s'%(smallest_diff), (10, 1670), font, 0.5, (255, 255, 0), 2, cv.LINE_AA)
+    return rotated_img, angle_guess, True, slope_b, intercept_y, intercept_b, yellow_warp, blue_warp, cam_origin
+
 
 # warp points with specified Homography
 def point_warp(points, H, img):
