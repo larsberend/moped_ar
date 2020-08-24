@@ -22,6 +22,7 @@ def birdview(img, view, last_angle):
 
     # # find points on lane markings in image
     # cut image to location of markings
+    print(img.shape)
     orig_img = img.copy()
     cut_to_road = orig_img[int(540):]
     img = cut_to_road
@@ -101,9 +102,14 @@ def iter_angle(last_angle, img, view, yellow, blue):
             warped_img, yellow_warp, blue_warp, cam_origin = warp_img(img, H, angle_guess, True, yellow, blue)
             slope_y, intercept_y = linregress(yellow_warp)[:2]
             slope_b, intercept_b = linregress(blue_warp)[:2]
+            print(slope_b)
+            print(slope_y)
+
             # cv.imwrite('schaunwirmal6.png', warped_img)
 
             # rotate image back (see mark_lanes.py)
+            if np.isnan(slope_b):
+                slope_b = 10000
             rotate_angle = np.degrees(0 - np.arctan(slope_b))
             rotated_img = skimage.transform.rotate(warped_img, rotate_angle, clip=True, preserve_range=True)
             # slope_b = 0
@@ -119,9 +125,14 @@ def iter_angle(last_angle, img, view, yellow, blue):
     warped_img, yellow_warp, blue_warp, cam_origin = warp_img(img, H, angle_guess, True, yellow, blue)
     slope_y, intercept_y = linregress(yellow_warp)[:2]
     slope_b, intercept_b = linregress(blue_warp)[:2]
+
+    print((slope_y, slope_b))
     # cv.imwrite('schaunwirmal6.png', warped_img)
 
     # rotate image back (see mark_lanes.py)
+    if np.isnan(slope_b):
+        slope_b = 10000
+    # else:
     rotate_angle = np.degrees(0 - np.arctan(slope_b))
     rotated_img = skimage.transform.rotate(warped_img, rotate_angle, clip=True, preserve_range=True)
     # slope_b = 0
@@ -170,7 +181,7 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None, dst_height=40
         blue = point_warp(blue, H, src)
 
         cam_origin = point_warp(cam_origin, H, src)
-
+        print(cam_origin)
         # plot lines in matplotlib if needed
         # linear regression for warped points on road markings
         # slope_y, intercept_y = linregress(yellow)[:2]
@@ -190,7 +201,7 @@ def warp_img(src, H, angle=None, inv=True, yellow=None, blue=None, dst_height=40
 
         cam_origin_a = np.int64((cam_origin[0] / 30) + dst_height)
         cam_origin_b = np.int64((cam_origin[1] / 30) + dst_width / 2)
-
+        print((cam_origin_a, cam_origin_b))
         a_vec[a_vec>dst_height] = -1
         b_vec[b_vec>dst_width] = -1
 
@@ -270,6 +281,7 @@ def my_interpol2(img):
         # save it and distance
         j = zero[i]
         while(j<img.shape[1]):
+
             if np.any(img[j] != [0,0,0]):
                 nonzero1 = img[j]
                 dist1 = np.abs(j-zero[i])
@@ -299,6 +311,7 @@ def my_interpol2(img):
 
             interpolated[zero[i]] = np.int32(bgr)
     # cv.imwrite('interpol.png',interpolated)
+    print('interpolation finished')
     return interpolated
 
 

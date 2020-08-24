@@ -14,10 +14,19 @@ from CMadgwick import CMad
 import skimage.transform as tf
 
 
+class IIR_filter():
+    def __init__(self, value=1, alpha=0.5):
+        self.value = value
+        self.alpha = alpha
+    def update(self, new_value):
+        self.value = self.alpha * new_value + (1-self.alpha) * self.value
+        return self.value
+
 '''
 Takes frames from a video file and roll-angle from gyro-data to calculate the pitch-angle of the camera
 relative to the road, saves in csv and birdview as PNGs
 '''
+
 
 def angle_from_vis():
     angle_calc = None
@@ -28,6 +37,10 @@ def angle_from_vis():
     start_msec = 0
     font = cv.FONT_HERSHEY_SIMPLEX
     grav_center = 2.805
+    calib_pitch_from_vis = 0.698131700797732
+
+    angle_filter = IIR_filter(calib_pitch_from_vis, alpha=0.3)
+    px_m_filter = IIR_filter(180, alpha=0.5)
 
     # get data from csv as array, ignore first two elements to resolve empty datapoints
     radius_madgwick = pd.read_csv(csv_path + file + '-gyroAcclGpsMadgwickQuat.csv')[['Milliseconds','Radius','Quat']].to_numpy()[2:].swapaxes(1,0)
@@ -69,99 +82,112 @@ def angle_from_vis():
 
             bird_im = np.zeros((frame.shape[1], frame.shape[0], 3))
 
-            # if coloring worked, find angle via iterating over a transform
+            # if coloring not worked, use same marking positions as in last frame
+            if not retval:
+                print('not retval')
+                yellow = np.where(np.all(last_frame == [0,255,255], axis=-1))
+                blue = np.where(np.all(last_frame == [255,0,0], axis=-1))
+                frame[yellow] = [0,255,255]
+                frame[blue] = [255,0,0]
+                marked_im = frame
+
+            # find angle via iterating over a transform
             # closing in on a birdview (==> road markings equidistant)
-            if retval:
-                bird_im, angle_calc, found, slope, inter1, inter2, yellow_warp, blue_warp, cam_origin = birdview(marked_im, False, angle_calc)
-            
-                if found:
-                    pitch_angles[frame_nr_int] = mil, angle_calc
-                    # print(np.degrees(angle_calc))
-                    # print((slope, inter1, inter2))
+            bird_im, angle_calc, found, slope, inter1, inter2, yellow_warp, blue_warp, cam_origin = birdview(marked_im, False, angle_calc)
 
-                    # scale for visibiliy, calculated from pixel/meter information from calibration
-                    # should not be necessary (bug)
-                    scale = tf.AffineTransform(scale=(1, 1.739))
-                    scaled_img = tf.warp(bird_im, inverse_map=scale)
-
-                    # remove lower black rows
-                    nonblack = np.amax(np.where(np.all(scaled_img!=[0,0,0], axis=-1))[0])
-                    scaled_img = scaled_img[:nonblack]
-                    # cv.imwrite('rotated_and_scaled.png', scaled_img)
-                    bird_im = scaled_img
-
-                    # get cam_origin in center and reduce width
-                    # print(cam_origin)
-                    cam_origin = np.where(np.all(bird_im == [0,0,255], axis=-1))
-                    cam_origin = (cam_origin[0][0], cam_origin[1][0])
-                    # print(cam_origin)
-                    bird_im = bird_im[:, max(0, cam_origin[1]-1000):min(cam_origin[1]+1000, 4000)]
-                    cam_origin = cam_origin[0], 1000
-
-                    # get width of lane in px
-                    road_mark_distance = dist(slope, inter1, inter2)
-                    print('mark distance:')
-                    print(road_mark_distance)
-
-                    # get width of one meter in px (lane width == 3m)
-                    pixel_meter = road_mark_distance / 3
-                    print(pixel_meter)
-
-
-                    # radius = -111.83459873843
-                    # radius = -130.946140709033 # problematic0
-                    # radius = -130946140709033
-
-                    # get radius and center of mass of motorcycle in px
-                    radius_pixel = radius * pixel_meter
-                    grav_center_px = grav_center * pixel_meter
-                    fw_point = cam_origin
-
-
-                    print(grav_center_px)
-                    print(radius_pixel)
-                    print('slope:')
-                    print(slope)
-
-                    # slope of line orthogonal to driving direction
-                    perp_slope = -1/slope
-                    # center of curve is radius from motorcycle
-                    circle_center = (fw_point[0], fw_point[1]-radius_pixel)
-                    print(circle_center)
-                    rr,cc = circle_perimeter(np.int64(circle_center[0]), np.int64(circle_center[1]), np.int64(np.abs(radius_pixel)), shape = bird_im.shape)
-
-                    # print(perimeter[0].shape)
-                    # print(perimeter)
-                    # print(rr,cc)
-
-                    # color curve
-                    bird_im[rr,cc] = [0,0,255]
-                    line_thickness = 10
-                    rr[rr<line_thickness] = 0
-                    rr[rr>bird_im.shape[0] - line_thickness] = 0
-
-                    for i in range(1,line_thickness):
-                        bird_im[rr+i, cc] = [0,0,255]
-                        bird_im[rr-i, cc] = [0,0,255]
-
-                    bird_im = cv.resize(bird_im, (np.int32(bird_im.shape[1]/2), np.int32(bird_im.shape[0]/2)))
-
-
-                    # cv.imwrite('finally.png', bird_im)
-
-                else:
-                    print('No fitting angle found. Best guess:')
-                    print(angle_calc)
+            if found:
+                print('found')
+                print(angle_filter.value)
+                angle_calc = angle_filter.update(angle_calc)
             else:
-                print('no lines found in image')
-                pitch_angles[frame_nr_int] = mil, None
+                angle_calc = angle_filter.value
 
+            print(angle_filter.value)
+            pitch_angles[frame_nr_int] = mil, angle_calc
+            # print(np.degrees(angle_calc))
+            # print((slope, inter1, inter2))
+
+            # scale for visibiliy, calculated from pixel/meter information from calibration
+            # should not be necessary (bug)
+            scale = tf.AffineTransform(scale=(1, 1.739))
+            scaled_img = tf.warp(bird_im, inverse_map=scale)
+
+            # remove lower black rows
+            nonblack = np.amax(np.where(np.all(scaled_img!=[0,0,0], axis=-1))[0])
+            scaled_img = scaled_img[:nonblack]
+            # cv.imwrite('rotated_and_scaled.png', scaled_img)
+            bird_im = scaled_img
+
+            # get cam_origin in center and reduce width
+            # print(cam_origin)
+            cam_origin = np.where(np.all(bird_im == [0,0,255], axis=-1))
+            cam_origin = (cam_origin[0][0], cam_origin[1][0])
+
+            # print(cam_origin)
+            bird_im = bird_im[:, max(0, cam_origin[1]-1000):min(cam_origin[1]+1000, 4000)]
+            cam_origin = cam_origin[0], 1000
+
+            # get width of lane in px
+            road_mark_distance = dist(slope, inter1, inter2)
+            print('mark distance:')
+            print(road_mark_distance)
+
+            # get width of one meter in px (lane width == 3m)
+            pixel_meter = road_mark_distance / 3
+            print(pixel_meter)
+
+            pixel_meter = px_m_filter.update(pixel_meter)
+
+            # radius = -111.83459873843
+            # radius = -130.946140709033 # problematic0
+            # radius = -130946140709033
+
+            # get radius and center of mass of motorcycle in px
+            radius_pixel = radius * pixel_meter
+            grav_center_px = grav_center * pixel_meter
+            fw_point = cam_origin
+
+
+            print(grav_center_px)
+            print(radius_pixel)
+            print('slope:')
+            print(slope)
+
+            # slope of line orthogonal to driving direction
+            perp_slope = -1/slope
+            # center of curve is radius from motorcycle
+            circle_center = (fw_point[0], fw_point[1]-radius_pixel)
+            print(circle_center)
+            rr,cc = circle_perimeter(np.int64(circle_center[0]), np.int64(circle_center[1]), np.int64(np.abs(radius_pixel)), shape = bird_im.shape)
+
+            # print(perimeter[0].shape)
+            # print(perimeter)
+            # print(rr,cc)
+
+            # color curve
+            bird_im[rr,cc] = [0,0,255]
+            line_thickness = 10
+            rr[rr<line_thickness] = 0
+            rr[rr>bird_im.shape[0] - line_thickness] = 0
+
+            for i in range(1,line_thickness):
+                bird_im[rr+i, cc] = [0,0,255]
+                bird_im[rr-i, cc] = [0,0,255]
+
+            bird_im = cv.resize(bird_im, (np.int32(bird_im.shape[1]/2), np.int32(bird_im.shape[0]/2)))
+
+
+            # cv.imwrite('finally.png', bird_im)
+
+            print('saving...')
+            print('../100GOPRO/testfahrt_1006/kandidaten/%s_birdview/%s.png'%(file, frame_nr_int))
             cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_birdview/%s.png'%(file, frame_nr_int), bird_im)
             cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_marked/%s.png'%(file, frame_nr_int), marked_im)
             cv.imwrite('../100GOPRO/testfahrt_1006/kandidaten/%s_hough/%s.png'%(file, frame_nr_int), hough_im)
             # print(marked_im.shape)
             cv.imshow(file, marked_im)
             print(frame_nr_int)
+            last_frame = marked_im
             frame_nr_int += 1
 
         if cv.waitKey(1) & 0xFF == ord('q'):

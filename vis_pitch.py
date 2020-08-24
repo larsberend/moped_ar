@@ -1,19 +1,26 @@
 import numpy as np
 import cv2 as cv
-import skvideo.io
 import pandas as pd
 from road_markings import get_markings
-from birdview import find_bv
+from birdview_new import find_bv
 
-colors = [[0,0,255], [255,255,0]]
+# colors = [[0,0,255], [255,255,0]]
+colors = [[0,255,255], [255,0,0]]
 
 def vis_pitch(img=None, known_roll=None):
     if img is not None:
-        frame, roll = img, known_roll
-        marked_img = get_markings(frame, roll, colors[0], colors[1])
-        pitch, bv = find_bv(marked_img)
-        return 0, pitch
-
+        marked_img, ret = img, True
+        if ret:
+        # frame, roll = img, known_roll
+        # marked_img, hough_img, ret = get_markings(frame, roll, colors[0], colors[1])
+        # if ret:
+            # print(marked_img.shape)
+            cut_to_road = marked_img[540:, :]
+            cv.imwrite('07_cut_to_road.png', cut_to_road)
+            bv = find_bv(cut_to_road, colors[0], colors[1])
+            if bv is not None:
+                return 0, pitch
+        return 0, 0
     start_msec = 0
     file = '3_2'
     path = '../100GOPRO/testfahrt_1006/kandidaten/'
@@ -31,7 +38,7 @@ def vis_pitch(img=None, known_roll=None):
         csv_ms, roll = csv[:, idx_csv]
 
         marked_img = get_markings(frame, roll, colors[0], colors[1])
-        cut_to_road = marked_img[:, 630]
+        cut_to_road = marked_img[:, 540]
         pitch, bv = find_bv(cut_to_road, colors[0], colors[1])
         pitches[frame_nr] = ms, pitch
     # quit()
@@ -44,11 +51,10 @@ def find_nearest(array, value):
     # print(idx)
     return idx
 
-def find_bv(marked_img):
-    None
 
 if __name__ == '__main__':
 
-    img, roll_angle= cv.imread('./problematic.png'), 0.298919415637517
+    # img, roll_angle= cv.imread('./problematic.png'), 0.298919415637517
+    img, roll_angle= cv.imread('./calib_yb_rot.png'), 0
     print(vis_pitch(img, roll_angle))
     # print(vis_pitch())
